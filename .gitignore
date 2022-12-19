@@ -7,3 +7,7 @@
 /tests/__pycache__
 /build
 /data
+CMakeLists.txt
+Makefile
+/src/ndarray_backend_cpu.cc
+/src/ndarray_backend_cuda.cu

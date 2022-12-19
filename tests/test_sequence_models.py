@@ -21,27 +21,21 @@ _DEVICES = [ndl.cpu(), pytest.param(ndl.cuda(),
     marks=pytest.mark.skipif(not ndl.cuda().enabled(), reason="No GPU"))]
 
 
-# BATCH_SIZES = [1, 15]
-# INPUT_SIZES = [1, 11]
-# HIDDEN_SIZES = [1, 12]
-# BIAS = [True, False]
-# INIT_HIDDEN = [True, False]
-# NONLINEARITIES = ['tanh', 'relu']
+BATCH_SIZES = [1, 15]
+INPUT_SIZES = [1, 11]
+HIDDEN_SIZES = [1, 12]
+BIAS = [True, False]
+INIT_HIDDEN = [True, False]
+NONLINEARITIES = ['tanh', 'relu']
 
-BATCH_SIZES = [15]
-INPUT_SIZES = [11]
-HIDDEN_SIZES = [12]
-BIAS = [True]
-INIT_HIDDEN = [True]
-NONLINEARITIES = ['tanh']
 
-# @pytest.mark.parametrize("batch_size", BATCH_SIZES)
-# @pytest.mark.parametrize("input_size", INPUT_SIZES)
-# @pytest.mark.parametrize("hidden_size", HIDDEN_SIZES)
-# @pytest.mark.parametrize("bias", BIAS)
-# @pytest.mark.parametrize("init_hidden", INIT_HIDDEN)
-# @pytest.mark.parametrize("nonlinearity", NONLINEARITIES)
-# @pytest.mark.parametrize("device", _DEVICES, ids=["cpu", "cuda"])
+@pytest.mark.parametrize("batch_size", BATCH_SIZES)
+@pytest.mark.parametrize("input_size", INPUT_SIZES)
+@pytest.mark.parametrize("hidden_size", HIDDEN_SIZES)
+@pytest.mark.parametrize("bias", BIAS)
+@pytest.mark.parametrize("init_hidden", INIT_HIDDEN)
+@pytest.mark.parametrize("nonlinearity", NONLINEARITIES)
+@pytest.mark.parametrize("device", _DEVICES, ids=["cpu", "cuda"])
 def test_rnn_cell(batch_size, input_size, hidden_size, bias, init_hidden, nonlinearity, device):
     x = np.random.randn(batch_size, input_size).astype(np.float32)
     h0 = np.random.randn(batch_size, hidden_size).astype(np.float32)

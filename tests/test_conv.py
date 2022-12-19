@@ -449,6 +449,45 @@ def test_op_conv(Z_shape, W_shape, stride, padding, backward, device):
     assert err3 < 1e-1, "outputs match %s, %s" % (y2, out2)
 
 
+op_conv_transposed_shapes = [
+    ( (3, 3, 3, 8), (3, 3, 8, 16), 1, 0 )
+]
+@pytest.mark.parametrize("Z_shape, W_shape, stride, padding", op_conv_transposed_shapes)
+@pytest.mark.parametrize("device", _DEVICES)
+@pytest.mark.parametrize("backward", [True, False], ids=["backward", "forward"])
+def test_op_conv_tranposed(Z_shape, W_shape, stride, padding, backward, device):
+    np.random.seed(0)
+    import torch
+    _Z = np.random.randn(*Z_shape)*5
+    _Z = _Z.astype(np.float32)
+    _W = np.random.randn(*W_shape)*5
+    _W = _W.astype(np.float32)
+    Z = ndl.Tensor(_Z, device=device)
+    W = ndl.Tensor(_W, device=device)
+    y = ndl.conv_transposed(Z, W, padding=padding, stride=stride)
+    y2 = y.sum()
+    if backward:
+        y2.backward()
+    Ztch = torch.Tensor(_Z).float()
+    Ztch.requires_grad=True
+    Wtch = torch.Tensor(_W).float()
+    Wtch.requires_grad=True
+    out = torch.nn.functional.conv_transpose2d(Ztch.permute(0, 3, 1, 2), Wtch.permute(2, 3, 0, 1), padding=padding, stride=stride)
+    out2 = out.sum()
+    # print("Y2 and OUT: ", y2, out2)
+    if backward:
+        out2.backward()
+    if backward:
+        err1 = np.linalg.norm(Ztch.grad.numpy() - Z.grad.numpy())
+        err2 = np.linalg.norm(Wtch.grad.numpy() - W.grad.numpy())
+    err3 = np.linalg.norm(out2.detach().numpy() - y2.numpy())
+    if backward:
+        assert err1 < 1e-2, "input grads match"
+        assert err2 < 1e-2, "weight grads match"
+    assert err3 < 1e-1, "outputs match %s, %s" % (y2, out2)
+
+
+
 @pytest.mark.parametrize("device", _DEVICES)
 def test_train_cifar10(device):
     np.random.seed(0)

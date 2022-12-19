@@ -685,3 +685,8 @@ def flip(a, axes):
 
 def summation(a, axis=None, keepdims=False):
     return a.sum(axis=axis, keepdims=keepdims)
+
+
+if __name__ == '__main__':
+    a = BackendDevice('cpu', ndarray_backend_cpu)
+    # print(a.name, a.mode)

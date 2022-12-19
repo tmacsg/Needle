@@ -40,7 +40,7 @@ CudaDims CudaOneDim(size_t size) {
   CudaDims dim;
   size_t num_blocks = (size + BASE_THREAD_NUM - 1) / BASE_THREAD_NUM;
   dim.block = dim3(BASE_THREAD_NUM, 1, 1);
-  dim.grid = dim3(num_blocks, 1, 1);
+  dim.grid = dim3((uint32_t)num_blocks, 1, 1);
   return dim;
 }
 
@@ -53,7 +53,7 @@ struct CudaVec {
 CudaVec VecToCuda(const std::vector<int32_t>& x) {
   CudaVec shape;
   if (x.size() > MAX_VEC_SIZE) throw std::runtime_error("Exceeded CUDA supported max dimesions");
-  shape.size = x.size();
+  shape.size = (uint32_t)x.size();
   for (size_t i = 0; i < x.size(); i++) {
     shape.data[i] = x[i];
   }
@@ -517,9 +517,9 @@ void Matmul(const CudaArray& a, const CudaArray& b, CudaArray* out, uint32_t M, 
    */
 
   /// BEGIN YOUR SOLUTION
-    size_t BLOCK_SIZE = 16;
-    size_t grid_rows = (M + BLOCK_SIZE - 1) / BLOCK_SIZE;
-    size_t grid_cols = (P + BLOCK_SIZE - 1) / BLOCK_SIZE;
+    uint32_t BLOCK_SIZE = 16;
+    uint32_t grid_rows = (M + BLOCK_SIZE - 1) / BLOCK_SIZE;
+    uint32_t grid_cols = (P + BLOCK_SIZE - 1) / BLOCK_SIZE;
     dim3 dimGrid(grid_cols, grid_rows);
     dim3 dimBlock(BLOCK_SIZE, BLOCK_SIZE);
 

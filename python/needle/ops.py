@@ -527,21 +527,21 @@ class Stack(TensorOp):
 
     def gradient(self, out_grad, node):
         ### BEGIN YOUR SOLUTION        
-        # args = node.inputs[0]
-        # size = 1
-        # for i in range(len(out_grad.shape)):
-        #     size *= out_grad.shape[i]
-        # out = out_grad.numpy()
-        # new_axes = list(range(len(out.shape)))
-        # new_axes.remove(self.axis)
-        # new_axes.insert(0, self.axis)    
-        # out = out.transpose(new_axes)
-        # out = out.reshape((len(args), size//len(args)))
-        # result = []
-        # for i in range(len(args)):
-        #     result.append(Tensor(out[i,:].reshape(args[0].shape)),)
-        # return MakeTensorTuple()(*result)
-        return split(out_grad, self.axis)
+        args = node.inputs[0]
+        size = 1
+        for i in range(len(out_grad.shape)):
+            size *= out_grad.shape[i]
+        out = out_grad.numpy()
+        new_axes = list(range(len(out.shape)))
+        new_axes.remove(self.axis)
+        new_axes.insert(0, self.axis)    
+        out = out.transpose(new_axes)
+        out = out.reshape((len(args), size//len(args)))
+        result = []
+        for i in range(len(args)):
+            result.append(Tensor(out[i,:].reshape(args[0].shape)),)
+        return MakeTensorTuple()(*result)
+        # return split(out_grad, self.axis)
         ### END YOUR SOLUTION
 
 
@@ -840,9 +840,6 @@ class Conv(TensorOp):
         N,H0,W0,C1 = A.shape
         K,_,_,C2 = B.shape
         mod = (H0 + 2 * self.padding - K) % self.stride
-
-        # print(A.shape, B.shape, out_grad.shape, self.stride, self.padding, mod)
-
         A1 = A.realize_cached_data().pad(((0,0),(self.padding,self.padding),
                                          (self.padding,self.padding),(0,0)))
                                 
@@ -865,7 +862,6 @@ class Conv(TensorOp):
             pad = A.shape[1] - result1.shape[1]
             result1 = result1.pad(((0,0),(0,pad),(0,pad),(0,0)))
 
-
         out2 = dilate(out_grad, axes=(1,2), dilation=self.stride-1).realize_cached_data()
         a,b,c,d = out2.shape
         out2 = out2[0:,0:b-self.stride+1,0:c-self.stride+1,0:]
@@ -879,6 +875,26 @@ class Conv(TensorOp):
 
 
 def conv(a, b, stride=1, padding=1):
+    return Conv(stride, padding)(a, b)
+
+
+class Conv_transposed(TensorOp):
+    def __init__(self, stride: Optional[int] = 1, padding: Optional[int] = 0):
+        self.stride = stride
+        self.padding = padding
+
+    def compute(self, A, B):
+        ### BEGIN YOUR SOLUTION
+        pass
+        ### END YOUR SOLUTION
+
+    def gradient(self, out_grad, node):
+        ### BEGIN YOUR SOLUTION
+        pass
+        ### END YOUR SOLUTION
+
+
+def conv_transposed(a, b, stride=1, padding=1):
     return Conv(stride, padding)(a, b)
 
 
