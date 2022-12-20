@@ -260,10 +260,8 @@ TEST_GETSETITEM_PARAMS = [((3, 2), (2, 1)), ((3, 3, 4), (2, np.s_[2:], np.s_[:3]
 def mugrade_submit(x):
     if isinstance(x, np.ndarray):
         x = x.flatten()[:64]
-        #print(x)
         mugrade.submit(x)
     else:
-        #print(x)
         mugrade.submit(x)
 
 

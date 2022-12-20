@@ -98,17 +98,10 @@ class Value:
             return self.cached_data
         # note: data implicitly calls realized cached data
 
-        # print('start debug: ', self.op)
-        # for x in self.inputs :
-        #     print(type(x))
-        # print('end debug')
 
         self.cached_data = self.op.compute(
             *[x.realize_cached_data() for x in self.inputs]
-        ) # if not isinstance(self, tuple) else [x.realiza_cached_data for x in self]
-
-        # if isinstance(self, TensorTuple):
-        #     self.cached_data = [data.realize_cached_data() for data in self.cached_data]
+        ) 
 
         return self.cached_data
 
@@ -317,7 +310,6 @@ class Tensor(Value):
             return needle.ops.AddScalar(other)(self)
 
     def __mul__(self, other):
-        # print('inside __mul__: ', type(self), type(other))
         if isinstance(other, Tensor):
             return needle.ops.EWiseMul()(self, other)
         else:
@@ -353,8 +345,7 @@ class Tensor(Value):
         return needle.ops.MatMul()(self, other)
 
     def sum(self, axes=None):
-        result = needle.ops.Summation(axes)(self)
-        return result
+        return needle.ops.Summation(axes)(self)
 
     def broadcast_to(self, shape):
         return needle.ops.BroadcastTo(shape)(self)

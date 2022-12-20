@@ -279,7 +279,6 @@ class Summation(TensorOp):
 
     def compute(self, a):
         ### BEGIN YOUR SOLUTION
-        # print('inside summation: ', type(a))
         return a.sum(self.axes)
         ### END YOUR SOLUTION
 
@@ -465,7 +464,6 @@ def logsumexp(a, axes=None):
 class Tanh(TensorOp):
     def compute(self, a):
         ### BEGIN YOUR SOLUTION
-        # print('inside tanh___: ', type(a))
         return a.tanh()
         ### END YOUR SOLUTION
 
@@ -482,7 +480,6 @@ def tanh(a):
 class Sigmoid(TensorOp):
     def compute(self, a):
         ### BEGIN YOUR SOLUTION 
-        # print('inside sigmoid___: ', type(a))   
         return a.sigmoid()
         ### END YOUR SOLUTION
 
@@ -682,12 +679,9 @@ class Split_by_batch(TensorTupleOp):
             child = B[i*num_childs:(i+1)*num_childs, :]
             child = child.reshape((num_childs, *new_shape[1:]))
             child = child.permute(new_indexes)
-            #print('child: ', type(child))
             result.append(Tensor(child, device=A.device))
 
-        ret = make_tuple(*result)
-        print('in stack ret[0]: ', type(ret[0]), ret[0].shape, type(ret[0].realize_cached_data()))
-    
+        ret = make_tuple(*result)    
         return ret
         ### END YOUR SOLUTION
 
@@ -899,7 +893,7 @@ class Conv_transposed(TensorOp):
         A1 = A.dilate((1,2), s_)
         A1 = A1[:,0:A1.shape[1]-s_,0:A1.shape[2]-s_,:].pad(((0,0),(p_,p_),(p_,p_),(0,0)))
         B1 = B.flip(axes=(0,1))
-        return conv(Tensor(A1,device=A1.device), Tensor(B1,device=B1.device), padding=0)
+        return conv(Tensor(A1,device=A1.device), Tensor(B1,device=B1.device), padding=0).realize_cached_data()
         
         ### END YOUR SOLUTION
 

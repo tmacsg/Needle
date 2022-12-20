@@ -348,12 +348,38 @@ class Conv_transposed(Module):
         self.stride = stride
 
         ### BEGIN YOUR SOLUTION
-        pass
+        receptive_field_size = kernel_size ** 2
+        shape = (kernel_size, kernel_size, in_channels, out_channels)
+        self.weight = Parameter(init.kaiming_uniform(in_channels * receptive_field_size, 
+                                                     out_channels * receptive_field_size, 
+                                                     shape=shape,
+                                                     device=device, dtype=dtype))
+
+        self.bias = None
+        if bias:
+            val = 1.0/((in_channels * (kernel_size**2))**0.5)
+            self.bias = Parameter(init.rand(out_channels, low=-val, high=val, device=device, dtype=dtype))
         ### END YOUR SOLUTION
 
     def forward(self, x: Tensor) -> Tensor:
         ### BEGIN YOUR SOLUTION 
-        pass
+        N,C,H,W = x.shape
+        padding = self.kernel_size // 2
+
+        x = x.transpose((1,2)).transpose((2,3)) # NC_inHW -> NHWC_in
+
+        if self.bias is None:
+            result =  ops.conv_transposed(x, self.weight, stride=self.stride, padding=padding) # NHWC_out
+            result = result.transpose((2,3)).transpose((1,2))
+            return result
+        else:
+            bias_ = self.bias.reshape((1,1,1,self.out_channels))
+            
+            result =  ops.conv_transposed(x, self.weight, stride=self.stride, padding=padding) 
+            bias_ = bias_.broadcast_to(result.shape)
+            result += bias_
+            result = result.transpose((2,3)).transpose((1,2))
+            return result
         ### END YOUR SOLUTION
 
 class RNNCell(Module):
@@ -489,19 +515,12 @@ class RNN(Module):
             h0 = init.zeros(self.num_layers, bs, self.hidden_size, device=self.device, dtype="float32")
 
         X_split_seq = list(ops.split(X, 0)) 
-        # print(f'X_split_seq: {type(X_split_seq)}, {X_split_seq[0].shape}')
 
         H = init.zeros(self.num_layers, seq_len, bs, self.hidden_size, device=self.device, dtype=X.dtype)  
         H_split_layer = list(ops.split(H, 0)) 
         H_split_layer_seq = [list(ops.split(H_split_layer[i], 0)) for i in range(self.num_layers)]
-        # print(len(H_split_layer_seq), len(H_split_layer_seq[0]), H_split_layer_seq[0][0].shape)
-        # print(f'X: {type(X)}, {X.shape}, {X.device}, {X.dtype}')
-        # print(f'H: {type(H)}, {H.shape}, {H.device}, {H.dtype}')
-
+ 
         # h0_split_layer = list(ops.split(h0, 0))
-        # print('h0: ', len(h0_split_layer), h0_split_layer[0].shape)
-        # # print(f'H:{H.shape}, H_split_layer:{H_split_layer[0].shape}, H_split_layer_seq:{H_split_layer_seq[0][0].shape}, \
-        # #     \nh0:{h0.shape}, h0_split_layer:{h0_split_layer[0].shape}')
         # for i in range(self.num_layers):
         #     for k in range(seq_len):
         #         if i == 0:
@@ -581,13 +600,10 @@ class LSTMCell(Module):
             bias2 = self.bias_hh.reshape((1, 4 * self.hidden_size)).broadcast_to(i_f_g_o.shape)
             i_f_g_o += (bias1 + bias2)
 
-        print('in lstm i_f_g_o: ', type(i_f_g_o), i_f_g_o.shape, type(i_f_g_o.realize_cached_data())) 
         result = ops.split_by_batch(i_f_g_o, axis=1, batch=4)
         for i in range(4):
             if isinstance(result[i].realize_cached_data(), Tensor):
                 result[i].cached_data = result[i].realize_cached_data().realize_cached_data()
-
-        print('in lstm result[0]: ', type(result[0]), result[0].shape, type(result[0].realize_cached_data().realize_cached_data()))
 
         i = Sigmoid()(result[0])
         f = Sigmoid()(result[1])

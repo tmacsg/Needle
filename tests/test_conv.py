@@ -389,8 +389,65 @@ def test_nn_conv_backward(s, cin, cout, k, stride, device):
 
     assert np.linalg.norm(g.weight.grad.data.numpy() - f.weight.grad.cached_data.numpy().transpose(3, 2, 0, 1)) < 1e-3, "weight gradients match"
     assert np.linalg.norm(g.bias.grad.data.numpy() - f.bias.grad.cached_data.numpy()) < 1e-3, "bias gradients match"
-    print(z.grad, x.grad)
     assert np.linalg.norm(z.grad.data.numpy() - x.grad.cached_data.numpy()) < 1e-3, "input gradients match"
+
+conv_transposed_forward_params = [
+    (4, 8, 16, 3, 1),
+    (32, 8, 16, 3, 2),
+    (32, 8, 8, 3, 2),
+    (32, 16, 8, 3, 1),
+    (32, 16, 8, 3, 2)
+]
+@pytest.mark.parametrize("s,cin,cout,k,stride", conv_transposed_forward_params)
+@pytest.mark.parametrize("device", _DEVICES)
+def test_nn_conv_tranposed_forward(s, cin, cout, k, stride, device):
+    np.random.seed(0)
+    import torch
+    f = ndl.nn.Conv_transposed(cin, cout, k, stride=stride, device=device)
+    x = ndl.init.rand(10, cin, s, s, device=device)
+    g = torch.nn.ConvTranspose2d(cin, cout, k, stride=stride, padding=k//2)
+
+    g.weight.data = torch.tensor(f.weight.realize_cached_data().numpy().transpose(2, 3, 0, 1))  # k ,k ,in, out -> in, out, k, k 
+    g.bias.data = torch.tensor(f.bias.cached_data.numpy())
+    z = torch.tensor(x.cached_data.numpy())  
+    assert np.linalg.norm(f(x).realize_cached_data().numpy() - g(z).data.numpy()) < 1e-3
+
+
+conv_transposed_back_params = [
+    (4, 1, 1, 3, 1),
+    (14, 8, 16, 3, 1),
+    (14, 8, 16, 3, 2),
+    (14, 8, 8, 3, 1),
+    (14, 8, 8, 3, 2),
+    (14, 16, 8, 3, 1),
+    (14, 16, 8, 3, 2),
+]
+@pytest.mark.parametrize("s,cin,cout,k,stride", conv_transposed_back_params)
+@pytest.mark.parametrize("device", _DEVICES)
+def test_nn_conv_transposed_backward(s, cin, cout, k, stride, device):
+    np.random.seed(0)
+    import torch
+    f = ndl.nn.Conv_transposed(cin, cout, k, stride=stride, device=device)
+    x = ndl.init.rand(1, cin, s, s, device=device, requires_grad=True)
+
+    g = torch.nn.ConvTranspose2d(cin, cout, k, stride=stride, padding=k//2)
+    g.weight.data = torch.tensor(f.weight.cached_data.numpy().transpose(2, 3, 0, 1))
+    g.bias.data = torch.tensor(f.bias.cached_data.numpy())
+    z = torch.tensor(x.cached_data.numpy(), requires_grad=True)
+    z.requires_grad = True
+
+    res1 = f(x)
+    y1 = res1.sum()
+
+    y2 = g(z).sum()
+
+    y1.backward()
+    y2.backward()
+
+    assert np.linalg.norm(g.weight.grad.data.numpy() - f.weight.grad.realize_cached_data().numpy().transpose(2, 3, 0, 1)) < 1e-3, "weight gradients match"
+    assert np.linalg.norm(g.bias.grad.data.numpy() - f.bias.grad.realize_cached_data().numpy()) < 1e-3, "bias gradients match"
+    assert np.linalg.norm(z.grad.data.numpy() - x.grad.realize_cached_data().numpy()) < 1e-3, "input gradients match"
+
 
 
 op_conv_shapes = [
@@ -436,7 +493,6 @@ def test_op_conv(Z_shape, W_shape, stride, padding, backward, device):
     Wtch.requires_grad=True
     out = torch.nn.functional.conv2d(Ztch.permute(0, 3, 1, 2), Wtch.permute(3, 2, 0, 1), padding=padding, stride=stride)
     out2 = out.sum()
-    # print("Y2 and OUT: ", y2, out2)
     if backward:
         out2.backward()
     if backward:
@@ -492,7 +548,6 @@ def test_op_conv_tranposed(Z_shape, W_shape, stride, padding, backward, device):
     Wtch.requires_grad=True
     out = torch.nn.functional.conv_transpose2d(Ztch.permute(0, 3, 1, 2), Wtch.permute(2, 3, 0, 1), padding=padding, stride=stride)
     out2 = out.sum()
-    # print("Y2 and OUT: ", y2, out2)
     if backward:
         out2.backward()
     if backward:

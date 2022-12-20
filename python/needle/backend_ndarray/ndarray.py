@@ -410,13 +410,8 @@ class NDArray:
         """Run either an elementwise or scalar version of a function,
         depending on whether "other" is an NDArray or scalar
         """
-        # print("###DEBUG_START###")
-        # print(type(self), type(other))
-        # print(ewise_func, scalar_func)
-        # print("###DEBUG_END###")
         out = NDArray.make(self.shape, device=self.device)
         if isinstance(other, NDArray):
-            # print("SHAPE DEBUG", self.shape, other.shape)
             assert self.shape == other.shape, "operation needs two equal-sized arrays"
             ewise_func(self.compact()._handle, other.compact()._handle, out._handle)
         else:
@@ -583,7 +578,6 @@ class NDArray:
         return view, out
 
     def sum(self, axis=None, keepdims=False):
-        # print('inside ndarray sum: ', type(self))
         view, out = self.reduce_view_out(axis, keepdims=keepdims)
         self.device.reduce_sum(view.compact()._handle, out._handle, view.shape[-1])
         return out
@@ -722,4 +716,3 @@ def summation(a, axis=None, keepdims=False):
 
 if __name__ == '__main__':
     a = BackendDevice('cpu', ndarray_backend_cpu)
-    # print(a.name, a.mode)
