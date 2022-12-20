@@ -253,6 +253,10 @@ class CIFAR10Dataset(Dataset):
         return dict
 
 
+
+    
+
+
 class NDArrayDataset(Dataset):
     def __init__(self, *arrays):
         self.arrays = arrays
