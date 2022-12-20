@@ -102,7 +102,6 @@ class Value:
         self.cached_data = self.op.compute(
             *[x.realize_cached_data() for x in self.inputs]
         ) 
-
         return self.cached_data
 
     def is_leaf(self):

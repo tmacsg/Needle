@@ -666,6 +666,22 @@ class NDArray:
         result[tuple(slices)] = self
         return result
 
+    def maxpool(self, kernel_size):
+        """
+        maxpool2D , only support strides = kernel_size
+        and padding = 0. 
+        input shape should be NCHW
+        """
+        N,C,H,W = self.shape
+        H_new, W_new = H // kernel_size, W // kernel_size
+
+        A = self.as_strided((N,C,H_new,W_new,kernel_size,kernel_size),
+            strides=[C*H*W, H*W, W*kernel_size, kernel_size, W, 1])
+
+        A = A.reshape((N, C, H_new, W_new, kernel_size * kernel_size))
+        return A.max(axis=4)
+
+
 
 def array(a, dtype="float32", device=None):
     """ Convenience methods to match numpy a bit more closely."""

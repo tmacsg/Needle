@@ -382,6 +382,22 @@ class Conv_transposed(Module):
             return result
         ### END YOUR SOLUTION
 
+class Maxpool(Module):
+    """
+    Maxpool2D, input shape NCHW, kernel_size = stride
+    """
+    def __init__(self, kernel_size, device=None):
+        super().__init__()
+        self.kernel_size = kernel_size
+        self.device = device
+
+    def forward(self, x: Tensor) -> Tensor:
+        ### BEGIN YOUR SOLUTION
+        return ops.maxpool(x, self.kernel_size)
+        ### END YOUR SOLUTION
+
+
+
 class RNNCell(Module):
     def __init__(self, input_size, hidden_size, bias=True, nonlinearity='tanh', device=None, dtype="float32"):
         """

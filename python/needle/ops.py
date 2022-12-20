@@ -918,4 +918,40 @@ def conv_transposed(a, b, stride=1, padding=0):
     return Conv_transposed(stride, padding)(a, b)
 
 
+class Maxpool(TensorOp):
+    def __init__(self, kernel_size: Optional[int] = 2):
+        self.kernel_size = kernel_size
 
+    def compute(self, A):
+        ### BEGIN YOUR SOLUTION
+        return A.maxpool(self.kernel_size)        
+        ### END YOUR SOLUTION
+
+    def gradient(self, out_grad, node):
+        ### BEGIN YOUR SOLUTION
+        N,C,H,W = node.inputs[0].shape
+        _,_,H_new,W_new = out_grad.shape
+        k = self.kernel_size
+
+        input_array = node.inputs[0].realize_cached_data()
+        output_array = self.compute(input_array)
+
+        output_array = output_array.reshape((*out_grad.shape, 1, 1)).broadcast_to((*out_grad.shape, k, k))
+        output_array = output_array.permute((0,1,2,4,3,5)).reshape((N,C,H,W))
+
+        mask = (output_array == input_array)
+        mask2 = mask.as_strided((N,C,H_new,W_new,k,k), strides=[C*H*W, H*W, W*k, k, W, 1])
+        mask2 = mask2.reshape((N, C, H_new, W_new, k * k)).sum(axis=4)
+        mask2 = mask2.reshape((*mask2.shape, 1, 1)).broadcast_to((*mask2.shape, k, k))
+        mask2= mask2.permute((0,1,2,4,3,5)).reshape((N,C,H,W))
+
+        ratio = mask / mask2
+        grad = out_grad.realize_cached_data().reshape((*out_grad.shape, 1, 1)).broadcast_to((*out_grad.shape, k, k))
+        grad = grad.permute((0,1,2,4,3,5)).reshape((N,C,H,W))
+
+        return Tensor(grad * ratio, device=out_grad.device)
+        ### END YOUR SOLUTION
+
+
+def maxpool(a, kernel_size=2):
+    return Maxpool(kernel_size)(a)

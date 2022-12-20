@@ -387,9 +387,9 @@ def test_nn_conv_backward(s, cin, cout, k, stride, device):
     y1.backward()
     y2.backward()
 
-    assert np.linalg.norm(g.weight.grad.data.numpy() - f.weight.grad.cached_data.numpy().transpose(3, 2, 0, 1)) < 1e-3, "weight gradients match"
-    assert np.linalg.norm(g.bias.grad.data.numpy() - f.bias.grad.cached_data.numpy()) < 1e-3, "bias gradients match"
-    assert np.linalg.norm(z.grad.data.numpy() - x.grad.cached_data.numpy()) < 1e-3, "input gradients match"
+    assert np.linalg.norm(g.weight.grad.data.numpy() - f.weight.grad.realize_cached_data().numpy().transpose(3, 2, 0, 1)) < 1e-3, "weight gradients match"
+    assert np.linalg.norm(g.bias.grad.data.numpy() - f.bias.grad.realize_cached_data().numpy()) < 1e-3, "bias gradients match"
+    assert np.linalg.norm(z.grad.data.numpy() - x.grad.realize_cached_data().numpy()) < 1e-3, "input gradients match"
 
 conv_transposed_forward_params = [
     (4, 8, 16, 3, 1),
@@ -448,6 +448,64 @@ def test_nn_conv_transposed_backward(s, cin, cout, k, stride, device):
     assert np.linalg.norm(g.bias.grad.data.numpy() - f.bias.grad.realize_cached_data().numpy()) < 1e-3, "bias gradients match"
     assert np.linalg.norm(z.grad.data.numpy() - x.grad.realize_cached_data().numpy()) < 1e-3, "input gradients match"
 
+maxpool_forward_params = [
+    ((1, 1, 4, 4), 2),
+    ((3, 8, 14, 14), 7),
+    ((3, 8, 20, 20), 2),
+    ((3, 8, 20, 20), 4),
+
+    ((5, 10, 15, 15), 3),
+    ((5, 10, 15, 15), 5),
+    ((5, 10, 16, 16), 4),
+    ((5, 10, 16, 16), 8),
+]
+@pytest.mark.parametrize("Z_shape,kernel_size", maxpool_forward_params) #NCHW
+@pytest.mark.parametrize("device", _DEVICES)
+def test_nn_maxpool_forward(Z_shape, kernel_size, device):
+    np.random.seed(0)
+    import torch
+    f = ndl.nn.Maxpool(kernel_size, device=device)
+    x = ndl.init.rand(*Z_shape, device=device, requires_grad=True)
+    g = torch.nn.MaxPool2d(kernel_size=kernel_size, stride=kernel_size)
+
+    z = torch.tensor(x.cached_data.numpy())  
+    assert np.linalg.norm(f(x).realize_cached_data().numpy() - g(z).data.numpy()) < 1e-3
+
+
+
+maxpool_back_params = [
+    ((1, 1, 4, 4), 2),
+    ((3, 8, 14, 14), 7),
+    ((3, 8, 20, 20), 2),
+    ((3, 8, 20, 20), 4),
+
+    ((5, 10, 15, 15), 3),
+    ((5, 10, 15, 15), 5),
+    ((5, 10, 16, 16), 4),
+    ((5, 10, 16, 16), 8),
+]
+@pytest.mark.parametrize("Z_shape,kernel_size", maxpool_back_params) #NCHW
+@pytest.mark.parametrize("device", _DEVICES)
+def test_nn_maxpool_backward(Z_shape, kernel_size, device):
+    np.random.seed(0)
+    import torch
+    f = ndl.nn.Maxpool(kernel_size, device=device)
+    x = ndl.init.rand(*Z_shape, device=device, requires_grad=True)
+
+    g = torch.nn.MaxPool2d(kernel_size=kernel_size, stride=kernel_size)
+
+    z = torch.tensor(x.cached_data.numpy(), requires_grad=True)
+    z.requires_grad = True
+
+    res1 = f(x)
+    y1 = res1.sum()
+
+    y2 = g(z).sum()
+
+    y1.backward()
+    y2.backward()
+
+    assert np.linalg.norm(z.grad.data.numpy() - x.grad.realize_cached_data().numpy()) < 1e-3, "input gradients match"
 
 
 op_conv_shapes = [
@@ -559,7 +617,43 @@ def test_op_conv_tranposed(Z_shape, W_shape, stride, padding, backward, device):
         assert err2 < 1e-2, "weight grads match"
     assert err3 < 1e-1, "outputs match %s, %s" % (y2, out2)
 
+op_maxpool_shapes = [
+    ((1, 1, 4, 4), 2),
+    ((3, 8, 14, 14), 7),
+    ((3, 8, 20, 20), 2),
+    ((3, 8, 20, 20), 4),
 
+    ((5, 10, 15, 15), 3),
+    ((5, 10, 15, 15), 5),
+    ((5, 10, 16, 16), 4),
+    ((5, 10, 16, 16), 8),
+]
+@pytest.mark.parametrize("Z_shape, kernel_size", op_maxpool_shapes)  ### NCHW
+@pytest.mark.parametrize("device", _DEVICES)
+@pytest.mark.parametrize("backward", [True, False], ids=["backward", "forward"])
+def test_op_maxpool(Z_shape, kernel_size, backward, device):
+    np.random.seed(0)
+    import torch
+    _Z = np.random.randn(*Z_shape)*5
+    _Z = _Z.astype(np.float32)
+    Z = ndl.Tensor(_Z, device=device)
+    y = ndl.maxpool(Z, kernel_size)
+    y2 = y.sum()
+    if backward:
+        y2.backward()
+    Ztch = torch.Tensor(_Z).float()
+    Ztch.requires_grad=True
+
+    out = torch.nn.functional.max_pool2d(Ztch, kernel_size=kernel_size, stride=kernel_size)
+    out2 = out.sum()
+    if backward:
+        out2.backward()
+    if backward:
+        err1 = np.linalg.norm(Ztch.grad.numpy() - Z.grad.numpy())
+    err2 = np.linalg.norm(out2.detach().numpy() - y2.numpy())
+    if backward:
+        assert err1 < 1e-2, "input grads match"
+    assert err2 < 1e-1, "outputs match %s, %s" % (y2, out2)
 
 @pytest.mark.parametrize("device", _DEVICES)
 def test_train_cifar10(device):
