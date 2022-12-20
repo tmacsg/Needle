@@ -638,6 +638,39 @@ class NDArray:
 
         ### END YOUR SOLUTION
 
+    def unpad(self, axes):
+        """
+        Recerse operation of pad
+        """
+        ### BEGIN YOUR SOLUTION
+        new_shape = list(self.shape)
+        slices = []
+        for i, axis in enumerate(axes):
+            slices.append(slice(axis[0], new_shape[i]-axis[1]))
+            new_shape[i] -= (axis[0]+axis[1])
+        result = self.device.zeros(new_shape)
+        result = self[tuple(slices)]
+        return result
+
+        ### END YOUR SOLUTION
+
+
+    def dilate(self, axes, dilation):
+        """
+        Dilate this ndarray by zeros by the specified dilation in `axes`
+        """
+        ### BEGIN YOUR SOLUTION
+        new_shape = list(self.shape)
+        slices = []
+        for axis in range(len(new_shape)):
+            if axis in axes:
+                new_shape[axis] *= (1 + dilation)
+                slices.append(slice(0,new_shape[axis],dilation+1))
+            else:
+                slices.append(slice(0,new_shape[axis],1))          
+        result = self.device.zeros(new_shape)
+        result[tuple(slices)] = self
+        return result
 
 
 def array(a, dtype="float32", device=None):

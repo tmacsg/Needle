@@ -720,7 +720,7 @@ class Flip(TensorOp):
 def flip(a, axes):
     return Flip(axes)(a)
 
-### BEGIN YOUR SOLUTION
+
 class Pad(TensorOp):
     def __init__(self, axes: Optional[tuple] = None):
         self.axes = axes
@@ -729,16 +729,26 @@ class Pad(TensorOp):
         return a.pad(self.axes)
 
     def gradient(self, out_grad, node):
-        slices = []
-        for axis in self.axes:
-            slices.append(slice(axis[0], axis[1]-1))
-        array = out_grad.realize_cached_data()
-        return Tensor(array[tuple(slices)], device=out_grad.device)
-### END YOUR SOLUTION
-
+        array = out_grad.realize_cached_data().unpad(self.axes)
+        return Tensor(array, device=out_grad.device)
 
 def pad(a, axes):
     return Pad(axes)(a)
+
+
+class UnPad(TensorOp):
+    def __init__(self, axes: Optional[tuple] = None):
+        self.axes = axes
+
+    def compute(self, a):
+        return a.unpad(self.axes)
+
+    def gradient(self, out_grad, node):
+        array = out_grad.realize_cached_data().pad(self.axes)
+        return Tensor(array, device=out_grad.device)
+
+def unpad(a, axes):
+    return UnPad(axes)(a)
 
 
 
@@ -797,11 +807,6 @@ class UnDilate(TensorOp):
 def undilate(a, axes, dilation):
     return UnDilate(axes, dilation)(a)
 
-
-
-
-def pad(a, axes):
-    return Pad(axes)(a)
 
 class Conv(TensorOp):
     def __init__(self, stride: Optional[int] = 1, padding: Optional[int] = 0):
@@ -885,17 +890,38 @@ class Conv_transposed(TensorOp):
 
     def compute(self, A, B):
         ### BEGIN YOUR SOLUTION
-        pass
+        # dilate A with strides-1, pad A with K-padding-1, conv with B_flipped
+        # H0 -> (H0-1)*S + K - 2*P 
+        N,H0,W0,C1 = A.shape
+        K,_,_,C2 = B.shape
+        s_ = self.stride - 1
+        p_ = K - self.padding - 1
+        A1 = A.dilate((1,2), s_)
+        A1 = A1[:,0:A1.shape[1]-s_,0:A1.shape[2]-s_,:].pad(((0,0),(p_,p_),(p_,p_),(0,0)))
+        B1 = B.flip(axes=(0,1))
+        return conv(Tensor(A1,device=A1.device), Tensor(B1,device=B1.device), padding=0)
+        
         ### END YOUR SOLUTION
 
     def gradient(self, out_grad, node):
         ### BEGIN YOUR SOLUTION
-        pass
+        A, B = node.inputs    
+        N,H0,W0,C1 = A.shape
+        K,_,_,C2 = B.shape
+        s_ = self.stride - 1
+        p_ = K - self.padding - 1
+        A1 = dilate(A, axes=(1,2), dilation=s_)  
+        A2 = unpad(A1, ((0,0),(0,s_),(0,s_),(0,0)))
+        A3 = pad(A2, ((0,0),(p_,p_),(p_,p_),(0,0)))
+        B1 = flip(B, axes=(0,1))
+        out = conv(A3, B1, padding=0)
+        out.backward()
+        return A.grad, B.grad
         ### END YOUR SOLUTION
 
 
-def conv_transposed(a, b, stride=1, padding=1):
-    return Conv(stride, padding)(a, b)
+def conv_transposed(a, b, stride=1, padding=0):
+    return Conv_transposed(stride, padding)(a, b)
 
 
 
