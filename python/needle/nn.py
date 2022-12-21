@@ -277,7 +277,7 @@ class Conv(Module):
     No grouped convolution or dilation
     Only supports square kernels
     """
-    def __init__(self, in_channels, out_channels, kernel_size, stride=1, bias=True, device=None, dtype="float32"):
+    def __init__(self, in_channels, out_channels, kernel_size, stride=1, padding = None, bias=True, device=None, dtype="float32"):
         super().__init__()
         if isinstance(kernel_size, tuple):
             kernel_size = kernel_size[0]
@@ -287,6 +287,7 @@ class Conv(Module):
         self.out_channels = out_channels
         self.kernel_size = kernel_size
         self.stride = stride
+        self.padding = kernel_size // 2 if padding is None else padding
 
         ### BEGIN YOUR SOLUTION
         receptive_field_size = kernel_size ** 2
@@ -309,7 +310,7 @@ class Conv(Module):
 
         # padding = (self.kernel_size + self.stride * H - H - self.stride) / 2
         # padding = math.ceil(padding)
-        padding = self.kernel_size // 2
+        padding = self.padding
 
         x = x.transpose((1,2)).transpose((2,3)) # NC_inHW -> NHWC_in
 
@@ -336,7 +337,7 @@ class Conv_transposed(Module):
     No grouped convolution or dilation
     Only supports square kernels
     """
-    def __init__(self, in_channels, out_channels, kernel_size, stride=1, bias=True, device=None, dtype="float32"):
+    def __init__(self, in_channels, out_channels, kernel_size, stride=1, padding = None, bias=True, device=None, dtype="float32"):
         super().__init__()
         if isinstance(kernel_size, tuple):
             kernel_size = kernel_size[0]
@@ -346,6 +347,7 @@ class Conv_transposed(Module):
         self.out_channels = out_channels
         self.kernel_size = kernel_size
         self.stride = stride
+        self.padding = kernel_size // 2 if padding is None else padding
 
         ### BEGIN YOUR SOLUTION
         receptive_field_size = kernel_size ** 2
@@ -364,7 +366,7 @@ class Conv_transposed(Module):
     def forward(self, x: Tensor) -> Tensor:
         ### BEGIN YOUR SOLUTION 
         N,C,H,W = x.shape
-        padding = self.kernel_size // 2
+        padding = self.padding
 
         x = x.transpose((1,2)).transpose((2,3)) # NC_inHW -> NHWC_in
 
