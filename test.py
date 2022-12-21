@@ -13,7 +13,7 @@ _DEVICES = [ndl.cpu(), pytest.param(ndl.cuda(),
     marks=pytest.mark.skipif(not ndl.cuda().enabled(), reason="No GPU"))]
 
 if __name__ == '__main__':
-    shape = (3, 8, 14, 14)
-    kernel_size = 7
-    test_op_maxpool(shape, kernel_size, True, _DEVICES[0])
+    Z_shape = ((2,3,4,5),(2,3,4,5))
+    axis = 0
+    test_op_concat(Z_shape, axis, False, _DEVICES[0])
 

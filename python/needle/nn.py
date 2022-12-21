@@ -396,6 +396,19 @@ class Maxpool(Module):
         return ops.maxpool(x, self.kernel_size)
         ### END YOUR SOLUTION
 
+class Concat(Module):
+    """
+    Concat a list of tensors, input shape NCHW
+    """
+    def __init__(self, axis):
+        super().__init__()
+        self.axis = axis
+
+    def forward(self, X):
+        ### BEGIN YOUR SOLUTION
+        return ops.concat(X, self.axis)
+        ### END YOUR SOLUTION
+
 
 
 class RNNCell(Module):

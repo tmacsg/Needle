@@ -655,6 +655,127 @@ def test_op_maxpool(Z_shape, kernel_size, backward, device):
         assert err1 < 1e-2, "input grads match"
     assert err2 < 1e-1, "outputs match %s, %s" % (y2, out2)
 
+op_concat_shapes = [
+    (((2,3,4,5),(2,3,4,5)), 0),
+    (((2,3,4,5),(2,3,4,5)), 1),
+    (((2,3,4,5),(2,3,4,5)), 2),
+    (((2,3,4,5),(2,3,4,5)), 3),
+
+    (((2,2,4,5),(2,3,4,5), (2,4,4,5)), 1),
+    (((2,3,4,5),(3,3,4,5), (4,3,4,5)), 0),
+    (((2,3,4,5),(2,3,5,5), (2,3,6,5)), 2),
+    (((2,3,4,5),(2,3,4,6), (2,3,4,7)), 3),
+]
+@pytest.mark.parametrize("Z_shape, axis", op_concat_shapes)  ### NCHW
+@pytest.mark.parametrize("device", _DEVICES)
+@pytest.mark.parametrize("backward", [True, False], ids=["backward", "forward"])
+def test_op_concat(Z_shape, axis, backward, device):
+    np.random.seed(0)
+    import torch
+    input_arrays = []
+    input_tch = []
+    input_ndl = []
+    for shape in Z_shape:
+        a = np.random.randn(*shape) * 5
+        a = a.astype(np.float32)
+        Z = ndl.Tensor(a, device=device)
+        Ztch = torch.Tensor(a).float()
+        Ztch.requires_grad=True
+        input_ndl.append(Z)
+        input_tch.append(Ztch) 
+
+    y = ndl.concat(input_ndl, axis=axis)
+    y2 = y.sum()
+    if backward:
+        y2.backward()
+
+    out = torch.cat(input_tch, dim=axis)
+    out2 = out.sum()
+    if backward:
+        out2.backward()
+    if backward:
+        err1= 0
+        for i in range(len(input_arrays)):
+            err1 += np.linalg.norm(input_tch[i].grad.numpy() - input_ndl[i].grad.numpy())
+    err2 = np.linalg.norm(out2.detach().numpy() - y2.numpy())
+    if backward:
+        assert err1 < 1e-2, "input grads match"
+    assert err2 < 1e-1, "outputs match %s, %s" % (y2, out2)
+
+nn_concat_forward_shapes = [
+    (((2,3,4,5),(2,3,4,5)), 0),
+    (((2,3,4,5),(2,3,4,5)), 1),
+    (((2,3,4,5),(2,3,4,5)), 2),
+    (((2,3,4,5),(2,3,4,5)), 3),
+
+    (((2,2,4,5),(2,3,4,5), (2,4,4,5)), 1),
+    (((2,3,4,5),(3,3,4,5), (4,3,4,5)), 0),
+    (((2,3,4,5),(2,3,5,5), (2,3,6,5)), 2),
+    (((2,3,4,5),(2,3,4,6), (2,3,4,7)), 3),
+]
+@pytest.mark.parametrize("Z_shape, axis", nn_concat_forward_shapes)  ### NCHW
+@pytest.mark.parametrize("device", _DEVICES)
+def test_nn_concat_forward(Z_shape, axis, device):
+    np.random.seed(0)
+    import torch
+    input_arrays = []
+    input_tch = []
+    input_ndl = []
+    for shape in Z_shape:
+        a = np.random.randn(*shape) * 5
+        a = a.astype(np.float32)
+        Z = ndl.Tensor(a, device=device)
+        Ztch = torch.Tensor(a).float()
+        Ztch.requires_grad=True
+        input_ndl.append(Z)
+        input_tch.append(Ztch) 
+
+    f = ndl.nn.Concat(axis)
+    y = f(input_ndl).realize_cached_data().numpy()
+    y2 = torch.cat(input_tch, dim=axis).data.numpy()
+    assert np.linalg.norm(y - y2) < 1e-3
+
+nn_concat_backward_shapes = [
+    (((2,3,4,5),(2,3,4,5)), 0),
+    (((2,3,4,5),(2,3,4,5)), 1),
+    (((2,3,4,5),(2,3,4,5)), 2),
+    (((2,3,4,5),(2,3,4,5)), 3),
+
+    (((2,2,4,5),(2,3,4,5), (2,4,4,5)), 1),
+    (((2,3,4,5),(3,3,4,5), (4,3,4,5)), 0),
+    (((2,3,4,5),(2,3,5,5), (2,3,6,5)), 2),
+    (((2,3,4,5),(2,3,4,6), (2,3,4,7)), 3),
+]
+@pytest.mark.parametrize("Z_shape, axis", nn_concat_backward_shapes)  ### NCHW
+@pytest.mark.parametrize("device", _DEVICES)
+def test_nn_concat_backward(Z_shape, axis, device):
+    np.random.seed(0)
+    import torch
+    input_arrays = []
+    input_tch = []
+    input_ndl = []
+    for shape in Z_shape:
+        a = np.random.randn(*shape) * 5
+        a = a.astype(np.float32)
+        Z = ndl.Tensor(a, device=device)
+        Ztch = torch.Tensor(a).float()
+        Ztch.requires_grad=True
+        input_ndl.append(Z)
+        input_tch.append(Ztch) 
+
+    f = ndl.nn.Concat(axis)
+    
+    y1 = f(input_ndl).sum()
+    y2 = torch.cat(input_tch, dim=axis).sum()
+    y1.backward()
+    y2.backward()
+
+    err = 0
+    for i in range(len(input_ndl)):
+        err += np.linalg.norm(input_tch[i].grad.data.numpy() - input_ndl[i].grad.realize_cached_data().numpy())
+    assert err < 1e-3, "input gradients match"
+
+
 @pytest.mark.parametrize("device", _DEVICES)
 def test_train_cifar10(device):
     np.random.seed(0)

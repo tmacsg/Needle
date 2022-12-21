@@ -955,3 +955,50 @@ class Maxpool(TensorOp):
 
 def maxpool(a, kernel_size=2):
     return Maxpool(kernel_size)(a)
+
+
+
+class Concat(TensorOp):
+    def __init__(self, axis):
+        self.axis = axis
+
+    def compute(self, args):
+        ### BEGIN YOUR SOLUTION
+        new_shape = list(args[0].shape)
+        new_axis_size = 0
+        for arg in args:
+            new_axis_size += arg.shape[self.axis]
+        new_shape[self.axis] = new_axis_size
+        result = args[0].device.zeros(new_shape)
+
+        sl = [slice(0,args[0].shape[i],1) for i in range(len(args[0].shape))]
+
+        offset = 0
+        for arg in args:
+            sl[self.axis] = slice(0+offset,arg.shape[self.axis]+offset,1)            
+            result[tuple(sl)] = arg
+            offset += arg.shape[self.axis]
+
+        return result
+        ### END YOUR SOLUTION
+
+
+    def gradient(self, out_grad, node):
+        ### BEGIN YOUR SOLUTION        
+        output_array = out_grad.realize_cached_data()
+        args = node.inputs[0]
+        sl = [slice(0,args[0].shape[i],1) for i in range(len(args[0].shape))]
+        result = []
+        offset = 0
+        for arg in args:
+            temp = arg.realize_cached_data().device.zeros(arg.shape)
+            sl[self.axis] = slice(0+offset, arg.shape[self.axis]+offset, 1)          
+            temp = output_array[tuple(sl)]
+            result.append(Tensor(temp, device=out_grad.device))
+            offset += arg.shape[self.axis]
+        return make_tuple(*result)
+        ### END YOUR SOLUTION
+
+
+def concat(args, axis):
+    return Concat(axis)(make_tuple(*args))
