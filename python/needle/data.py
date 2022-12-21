@@ -315,7 +315,7 @@ class FetalHeadDataset(Dataset):
 				img = aug_name[0](img)
 		# img = (img - torch.mean(img)) / torch.std(img)
 		img = (img - np.mean(img)) / np.std(img)
-		return img, list(mask)
+		return img, mask
 	
 
 

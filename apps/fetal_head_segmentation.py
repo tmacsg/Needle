@@ -1,6 +1,7 @@
 from sklearn.model_selection import train_test_split
 import cv2
 import matplotlib.pyplot as plt
+from tqdm import trange
 import os
 import sys
 sys.path.append('../python')
@@ -9,6 +10,7 @@ import needle.nn as nn
 from needle import backend_ndarray as nd
 from models import *
 from needle.data import *
+from needle.init import *
 
 def get_data_loaders(categories, path, file_lists,
 					 augment, p, batch_size):
@@ -50,6 +52,93 @@ def get_splits(all_names, train_size, val_size, test_size):
 	val_names, tst_names = train_test_split(
 		valtst_names, test_size=split2_size, random_state=0)
 	return trn_names, val_names, tst_names 
+
+
+# dice score
+# def integral_dice(pred, gt, k):
+#     '''
+#     Dice coefficient for multiclass hard thresholded prediction consisting of 
+#     integers instead of binary values. 
+#     k = integer for class for which Dice is being calculated.
+#     '''
+#     return (torch.sum(pred[gt == k] == k)*2.0
+#             / (torch.sum(pred[pred == k] == k)
+#                + torch.sum(gt[gt == k] == k)).float())
+	
+
+
+def learn(model, loader, optimizer, process, device):
+	""" main function for single epoch of train, val or test """
+	dice_list = []
+	running_loss = 0
+	# num_batches = len(loader)
+	num_batches = len(loader.dataset) // loader.batch_size
+	with trange(num_batches, desc=process, ncols=100) as t:
+		for batch_num, sample in enumerate(loader):
+			img_batch, masks = sample
+			# masks = masks[:, 0, :, :, 0].long()
+			masks = np.array(masks)[:,:,:,0]
+			# print(f'type(masks): {type(masks)}, masks.shape: {masks.shape}, masks.dtype:{masks.dtype}')
+			image_batch, masks = ndl.Tensor(img_batch, device=device), ndl.Tensor(masks, device=device)
+			# print(f'type(masks): {type(masks)}, masks.shape: {masks.shape}, masks.dtype:{masks.dtype}')
+			# print(f'type(image_batch): {type(image_batch)}, image_batch.shape: {image_batch.shape}')
+			# masks = masks[:, 0, :, :, 0].long()
+			# print(type(masks), masks.shape, masks)
+   
+			# # one hot encoding labels
+			# masks_oh = one_hot(masks, num_classes=2, device='cpu', dtype=masks.dtype)
+   
+			if process == 'train':
+				model.train()
+				optimizer.reset_grad()
+				# preds = F.softmax(model(img_batch.cuda()), 1)
+				# loss = F.binary_cross_entropy(preds, masks_oh.cuda())
+				preds = model(image_batch)
+				loss = nn.softmax(logits=preds, y=masks)
+				loss.backward()
+				optimizer.step()
+			else:
+				model.eval()
+				with torch.no_grad():
+					preds = F.softmax(model(img_batch.cuda()), 1)
+					loss = F.binary_cross_entropy(preds, masks_oh.cuda())
+					
+			# hard_preds = torch.argmax(preds, 1)
+			# dice = integral_dice(hard_preds, masks, 1)
+			# dice_list.append(dice.item())
+			running_loss += loss
+			t.set_postfix(loss=running_loss.item()/(float(batch_num+1)*batch_size))
+			t.update()
+	mean_dice = np.mean(np.array(dice_list))
+	final_loss = running_loss.item()/(num_batches*batch_size)
+	return mean_dice, final_loss
+
+
+def perform_learning(model, optimizer, path, all_names, batch_size,
+					 splits, num_epochs, device):
+	""" Wrapper function to run train, val, test loops """
+	train_size, val_size, test_size = splits
+	trn_names, val_names, tst_names = get_splits(all_names, train_size, val_size,
+												test_size)
+	train_loader, val_loader, test_loader = get_data_loaders(
+		['train', 'val', 'test'],
+		path, [trn_names, val_names, tst_names],
+		augment=False,
+		p=0.5,
+		batch_size=batch_size
+	)
+	for epoch_num in range(num_epochs):
+		# train set
+		train_dice, train_loss = learn(model, train_loader, optimizer, 'train', device)
+		print(f'Training Epoch {epoch_num} - Loss: {train_loss} ; Dice : {train_dice}')
+
+	# 	# val set
+	# 	val_dice, val_loss = learn(model, val_loader, optimizer, 'val')
+	# 	print(f'Validation Epoch {epoch_num} - Loss: {val_loss} ; Dice : {val_dice}')
+	
+	# # test set
+	# tst_dice, tst_loss = learn(model, test_loader, optimizer, 'test')
+	# print(f'Test - Loss: {tst_loss} ; Dice : {tst_dice}')
 
 
 
@@ -104,6 +193,25 @@ def qualitative_assessment():
 		if cnt >= 5:
 			break
 
+
+
 if __name__ == "__main__":
-	qualitative_assessment()
 	
+	path = '../data/us_dataset'
+	all_names = os.listdir(os.path.join(path, 'all_images'))
+
+	lr = 1e-4
+	wt_dec = 1e-4
+	num_epochs = 5
+	batch_size = 2
+	splits = [0.8, 0.1, 0.1]
+	device = ndl.cpu()
+	# model = unet(n_classes=2, device=device, dtype="float32")
+	model = ResNet9(device=device)
+
+	optimizer = ndl.optim.Adam(model.parameters(), lr=lr, weight_decay=wt_dec)
+
+	perform_learning(model, optimizer, path, all_names, batch_size,
+					splits, num_epochs, device)
+
+	# qualitative_assessment()

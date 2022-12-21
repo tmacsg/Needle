@@ -87,11 +87,14 @@ class LanguageModel(nn.Module):
 class unetConv2(nn.Module):
     def __init__(self, in_size, out_size, is_batchnorm, device=None, dtype="float32"):
         super(unetConv2, self).__init__()
-
-        def ConvBN(a, b, k, s, device=self.device):
+        
+        self.device = device
+        self.dtype = dtype
+        
+        def ConvBN(a, b, k, s, device=self.device, dtype=self.dtype):
             return nn.Sequential(
-                nn.Conv(a, b, k, s, device=device, dtype="float32"),
-                nn.BatchNorm2d(dim=b, device=device, dtype="float32"),
+                nn.Conv(a, b, k, s, device=device, dtype=dtype),
+                nn.BatchNorm2d(dim=b, device=device, dtype=dtype),
                 nn.ReLU()
             )
 
@@ -114,10 +117,11 @@ class unetConv2(nn.Module):
 class unetUp(nn.Module):
     def __init__(self, in_size, out_size, is_deconv=True, device=None, dtype="float32"):
         super(unetUp, self).__init__()
-        self.conv = unetConv2(in_size, out_size, False, device=None, dtype="float32")
+        
+        self.conv = unetConv2(in_size, out_size, False, device=device, dtype=dtype)
         if is_deconv:
             self.up = nn.Conv_transposed(
-                in_size, out_size, kernel_size=2, stride=2, device=None, dtype="float32")
+                in_size, out_size, kernel_size=2, stride=2, device=device, dtype=dtype)
         else:
             pass
             # self.up = nn.UpsamplingBilinear2d(scale_factor=2)
@@ -151,28 +155,28 @@ class unet(nn.Module):
         filters = [int(x / self.feature_scale) for x in filters]
 
         # downsampling
-        self.conv1 = unetConv2(self.in_channels, filters[0], self.is_batchnorm, device=None, dtype="float32")
+        self.conv1 = unetConv2(self.in_channels, filters[0], self.is_batchnorm, device=device, dtype=dtype)
         self.maxpool1 = nn.MaxPool2d(kernel_size=2)
 
-        self.conv2 = unetConv2(filters[0], filters[1], self.is_batchnorm, device=None, dtype="float32")
+        self.conv2 = unetConv2(filters[0], filters[1], self.is_batchnorm, device=device, dtype=dtype)
         self.maxpool2 = nn.MaxPool2d(kernel_size=2)
 
-        self.conv3 = unetConv2(filters[1], filters[2], self.is_batchnorm, device=None, dtype="float32")
+        self.conv3 = unetConv2(filters[1], filters[2], self.is_batchnorm, device=device, dtype=dtype)
         self.maxpool3 = nn.MaxPool2d(kernel_size=2)
 
-        self.conv4 = unetConv2(filters[2], filters[3], self.is_batchnorm, device=None, dtype="float32")
+        self.conv4 = unetConv2(filters[2], filters[3], self.is_batchnorm, device=device, dtype=dtype)
         self.maxpool4 = nn.MaxPool2d(kernel_size=2)
 
-        self.center = unetConv2(filters[3], filters[4], self.is_batchnorm, device=None, dtype="float32")
+        self.center = unetConv2(filters[3], filters[4], self.is_batchnorm, device=device, dtype=dtype)
 
         # upsampling
-        self.up_concat4 = unetUp(filters[4], filters[3], self.is_deconv, device=None, dtype="float32")
-        self.up_concat3 = unetUp(filters[3], filters[2], self.is_deconv, device=None, dtype="float32")
-        self.up_concat2 = unetUp(filters[2], filters[1], self.is_deconv, device=None, dtype="float32")
-        self.up_concat1 = unetUp(filters[1], filters[0], self.is_deconv, device=None, dtype="float32")
+        self.up_concat4 = unetUp(filters[4], filters[3], self.is_deconv, device=device, dtype=dtype)
+        self.up_concat3 = unetUp(filters[3], filters[2], self.is_deconv, device=device, dtype=dtype)
+        self.up_concat2 = unetUp(filters[2], filters[1], self.is_deconv, device=device, dtype=dtype)
+        self.up_concat1 = unetUp(filters[1], filters[0], self.is_deconv, device=device, dtype=dtype)
 
         # final conv (without any concat)
-        self.final = nn.Conv(filters[0], n_classes, 1, device=None, dtype="float32")
+        self.final = nn.Conv(filters[0], n_classes, 1, device=device, dtype=dtype)
 
     def forward(self, inputs):
         conv1 = self.conv1(inputs)
