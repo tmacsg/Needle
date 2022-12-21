@@ -94,7 +94,7 @@ class unetConv2(nn.Module):
         
         def ConvBN(a, b, k, s, device=self.device, dtype=self.dtype):
             return nn.Sequential(
-                nn.Conv(a, b, k, s, device=device, dtype=dtype),
+                nn.Conv(a, b, k, s, padding=0, device=device, dtype=dtype),
                 nn.BatchNorm2d(dim=b, device=device, dtype=dtype),
                 nn.ReLU()
             )
@@ -105,9 +105,9 @@ class unetConv2(nn.Module):
 
         else:
             self.conv1 = nn.Sequential(
-                nn.Conv(in_size, out_size, 3, 1, device=device, dtype=dtype), nn.ReLU())
+                nn.Conv(in_size, out_size, 3, 1, padding=0, device=device, dtype=dtype), nn.ReLU())
             self.conv2 = nn.Sequential(
-                nn.Conv(out_size, out_size, 3, 1, device=device, dtype=dtype), nn.ReLU())
+                nn.Conv(out_size, out_size, 3, 1, padding=0, device=device, dtype=dtype), nn.ReLU())
 
     def forward(self, inputs):
         outputs = self.conv1(inputs)
@@ -122,7 +122,7 @@ class unetUp(nn.Module):
         self.conv = unetConv2(in_size, out_size, False, device=device, dtype=dtype)
         if is_deconv:
             self.up = nn.Conv_transposed(
-                in_size, out_size, kernel_size=2, stride=2, device=device, dtype=dtype)
+                in_size, out_size, kernel_size=2, stride=2, padding=0, device=device, dtype=dtype)
         else:
             pass
             # self.up = nn.UpsamplingBilinear2d(scale_factor=2)
@@ -181,20 +181,29 @@ class unet(nn.Module):
         self.up_concat1 = unetUp(filters[1], filters[0], self.is_deconv, device=device, dtype=dtype)
 
         # final conv (without any concat)
-        self.final = nn.Conv(filters[0], n_classes, 1, device=device, dtype=dtype)
+        self.final = nn.Conv(filters[0], n_classes,
+                             1, padding=0, device=device, dtype=dtype)
 
     def forward(self, inputs):
         conv1 = self.conv1(inputs)
+        # print(f'conv1: {conv1.shape}')
         maxpool1 = self.maxpool1(conv1)
-
+        # print(f'maxpool1: {maxpool1.shape}')
+        
         conv2 = self.conv2(maxpool1)
+        # print(f'conv2: {conv2.shape}')
         maxpool2 = self.maxpool2(conv2)
+        # print(f'maxpool2: {maxpool2.shape}')
 
         conv3 = self.conv3(maxpool2)
+        # print(f'conv3: {conv3.shape}')
         maxpool3 = self.maxpool3(conv3)
+        # print(f'maxpool3: {maxpool3.shape}')
 
         conv4 = self.conv4(maxpool3)
+        # print(f'conv4: {conv4.shape}')
         maxpool4 = self.maxpool4(conv4)
+        # print(f'maxpool4: {maxpool4.shape}')
 
         center = self.center(maxpool4)
         up4 = self.up_concat4(conv4, center)
