@@ -2,6 +2,7 @@ import sys
 sys.path.append('./python')
 import needle as ndl
 import needle.nn as nn
+from needle import ops
 import math
 import numpy as np
 np.random.seed(0)
@@ -128,9 +129,13 @@ class unetUp(nn.Module):
 
     def forward(self, inputs1, inputs2):
         outputs2 = self.up(inputs2)
-        offset = outputs2.shape[2] - inputs1.shape[2]
-        padding = 2 * [offset // 2, offset // 2]
-        outputs1 = ndl.ops.pad(inputs1, padding)
+        # offset = outputs2.shape[2] - inputs1.shape[2]
+        # padding = 2 * [offset // 2, offset // 2]
+        # outputs1 = ndl.ops.pad(inputs1, padding)
+        offset = (inputs1.shape[2] - outputs2.shape[2]) // 2
+        offset_right = offset + (inputs1.shape[2] - outputs2.shape[2]) % 2
+        
+        outputs1 = ops.unpad(inputs1, ((0,0),(0,0),(offset,offset_right),(offset,offset_right)))
         return self.conv(ndl.ops.concat([outputs1, outputs2], 1))
 
 

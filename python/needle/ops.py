@@ -964,8 +964,8 @@ class Concat(TensorOp):
 
     def compute(self, args):
         ### BEGIN YOUR SOLUTION
-        shapes = [list(arg.shape).remove(self.axis) for arg in args]
-        assert len(set(shapes)) == 1, "All tensors must have the same shape except for the axis to concatenate on"
+        # shapes = [list(arg.shape).remove(self.axis) for arg in args]
+        # assert len(set(shapes)) == 1, "All tensors must have the same shape except for the axis to concatenate on"
         
         new_shape = list(args[0].shape)
         new_axis_size = 0

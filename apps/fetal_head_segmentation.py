@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from tqdm import trange
 import os
 import sys
-sys.path.append('../python')
+sys.path.append('./python')
 import needle as ndl
 import needle.nn as nn
 from needle import backend_ndarray as nd
@@ -201,7 +201,7 @@ def qualitative_assessment():
 
 if __name__ == "__main__":
 	
-	path = '../data/us_dataset'
+	path = './data/us_dataset'
 	all_names = os.listdir(os.path.join(path, 'all_images'))
 
 	lr = 1e-4
