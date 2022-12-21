@@ -71,8 +71,9 @@ def learn(model, loader, optimizer, process, device):
 	""" main function for single epoch of train, val or test """
 	dice_list = []
 	running_loss = 0
-	# num_batches = len(loader)
-	num_batches = len(loader.dataset) // loader.batch_size
+	batch_size = loader.batch_size
+	num_batches = len(loader.dataset) // batch_size
+ 
 	with trange(num_batches, desc=process, ncols=100) as t:
 		for batch_num, sample in enumerate(loader):
 			print(f'batch_num: {batch_num}')
@@ -98,24 +99,29 @@ def learn(model, loader, optimizer, process, device):
 	
 				preds = model(image_batch)
 				# print(f'type(preds): {type(preds)}, preds.shape: {preds.shape}')
-				loss = nn.softmax(logits=preds.reshape(), y=masks)
+				# print(f'type(masks): {type(masks)}, masks.shape: {masks.shape}')
+				_, classes, h, w = preds.shape
+
+				loss = nn.SoftmaxLoss()(preds.reshape((batch_size*h*w, classes)),
+                                    masks.reshape((h*w*classes,)))
 				loss.backward()
 				optimizer.step()
-			else:
-				model.eval()
-				with torch.no_grad():
-					preds = F.softmax(model(img_batch.cuda()), 1)
-					loss = F.binary_cross_entropy(preds, masks_oh.cuda())
+			print('finished batch')
+			# else:
+			# 	model.eval()
+			# 	with torch.no_grad():
+			# 		preds = F.softmax(model(img_batch.cuda()), 1)
+			# 		loss = F.binary_cross_entropy(preds, masks_oh.cuda())
 					
-			# hard_preds = torch.argmax(preds, 1)
-			# dice = integral_dice(hard_preds, masks, 1)
-			# dice_list.append(dice.item())
-			running_loss += loss
-			t.set_postfix(loss=running_loss.item()/(float(batch_num+1)*batch_size))
-			t.update()
-	mean_dice = np.mean(np.array(dice_list))
-	final_loss = running_loss.item()/(num_batches*batch_size)
-	return mean_dice, final_loss
+			# # hard_preds = torch.argmax(preds, 1)
+			# # dice = integral_dice(hard_preds, masks, 1)
+			# # dice_list.append(dice.item())
+			# running_loss += loss
+			# t.set_postfix(loss=running_loss.item()/(float(batch_num+1)*batch_size))
+			# t.update()
+	# mean_dice = np.mean(np.array(dice_list))
+	# final_loss = running_loss.item()/(num_batches*batch_size)
+	# return mean_dice, final_loss
 
 
 def perform_learning(model, optimizer, path, all_names, batch_size,

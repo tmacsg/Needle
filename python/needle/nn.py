@@ -156,6 +156,10 @@ class Sequential(Module):
 
 
 class SoftmaxLoss(Module):
+    """
+    logits: Tensor of shape (batch_size, classes)
+    y: Tensor of shape (batch_size,) of integers in [0, classes)
+    """
     def forward(self, logits: Tensor, y: Tensor):
         ### BEGIN YOUR SOLUTION
         if len(logits.shape) == 1:
