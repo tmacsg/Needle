@@ -75,6 +75,7 @@ def learn(model, loader, optimizer, process, device):
 	num_batches = len(loader.dataset) // loader.batch_size
 	with trange(num_batches, desc=process, ncols=100) as t:
 		for batch_num, sample in enumerate(loader):
+			print(f'batch_num: {batch_num}')
 			img_batch, masks = sample
 			# masks = masks[:, 0, :, :, 0].long()
 			masks = np.array(masks)[:,:,:,0]
@@ -91,27 +92,30 @@ def learn(model, loader, optimizer, process, device):
 			if process == 'train':
 				model.train()
 				optimizer.reset_grad()
+	
 				# preds = F.softmax(model(img_batch.cuda()), 1)
 				# loss = F.binary_cross_entropy(preds, masks_oh.cuda())
+	
 				preds = model(image_batch)
-				loss = nn.softmax(logits=preds, y=masks)
-				loss.backward()
-				optimizer.step()
-			else:
-				model.eval()
-				with torch.no_grad():
-					preds = F.softmax(model(img_batch.cuda()), 1)
-					loss = F.binary_cross_entropy(preds, masks_oh.cuda())
+				print(f'type(preds): {type(preds)}, preds.shape: {preds.shape}')
+	# 			loss = nn.softmax(logits=preds, y=masks)
+	# 			loss.backward()
+	# 			optimizer.step()
+	# 		else:
+	# 			model.eval()
+	# 			with torch.no_grad():
+	# 				preds = F.softmax(model(img_batch.cuda()), 1)
+	# 				loss = F.binary_cross_entropy(preds, masks_oh.cuda())
 					
-			# hard_preds = torch.argmax(preds, 1)
-			# dice = integral_dice(hard_preds, masks, 1)
-			# dice_list.append(dice.item())
-			running_loss += loss
-			t.set_postfix(loss=running_loss.item()/(float(batch_num+1)*batch_size))
-			t.update()
-	mean_dice = np.mean(np.array(dice_list))
-	final_loss = running_loss.item()/(num_batches*batch_size)
-	return mean_dice, final_loss
+	# 		# hard_preds = torch.argmax(preds, 1)
+	# 		# dice = integral_dice(hard_preds, masks, 1)
+	# 		# dice_list.append(dice.item())
+	# 		running_loss += loss
+	# 		t.set_postfix(loss=running_loss.item()/(float(batch_num+1)*batch_size))
+	# 		t.update()
+	# mean_dice = np.mean(np.array(dice_list))
+	# final_loss = running_loss.item()/(num_batches*batch_size)
+	# return mean_dice, final_loss
 
 
 def perform_learning(model, optimizer, path, all_names, batch_size,
@@ -205,9 +209,9 @@ if __name__ == "__main__":
 	num_epochs = 5
 	batch_size = 2
 	splits = [0.8, 0.1, 0.1]
-	device = ndl.cpu()
-	# model = unet(n_classes=2, device=device, dtype="float32")
-	model = ResNet9(device=device)
+	device = ndl.cuda()
+	model = unet(n_classes=2, device=device, dtype="float32")
+	# model = ResNet9(device=device)
 
 	optimizer = ndl.optim.Adam(model.parameters(), lr=lr, weight_decay=wt_dec)
 

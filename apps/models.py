@@ -104,9 +104,9 @@ class unetConv2(nn.Module):
 
         else:
             self.conv1 = nn.Sequential(
-                nn.Conv(in_size, out_size, 3, 1), nn.ReLU())
+                nn.Conv(in_size, out_size, 3, 1, device=device, dtype=dtype), nn.ReLU())
             self.conv2 = nn.Sequential(
-                nn.Conv(out_size, out_size, 3, 1), nn.ReLU())
+                nn.Conv(out_size, out_size, 3, 1, device=device, dtype=dtype), nn.ReLU())
 
     def forward(self, inputs):
         outputs = self.conv1(inputs)
@@ -128,10 +128,10 @@ class unetUp(nn.Module):
 
     def forward(self, inputs1, inputs2):
         outputs2 = self.up(inputs2)
-        offset = outputs2.size()[2] - inputs1.size()[2]
+        offset = outputs2.shape[2] - inputs1.shape[2]
         padding = 2 * [offset // 2, offset // 2]
         outputs1 = ndl.ops.pad(inputs1, padding)
-        return self.conv(torch.cat([outputs1, outputs2], 1))
+        return self.conv(ndl.ops.concat([outputs1, outputs2], 1))
 
 
 class unet(nn.Module):
@@ -141,7 +141,7 @@ class unet(nn.Module):
         n_classes=21, 
         is_deconv=True, 
         in_channels=3, 
-        is_batchnorm=True,
+        is_batchnorm=False,
         device=None, 
         dtype="float32"
     ):
@@ -156,16 +156,16 @@ class unet(nn.Module):
 
         # downsampling
         self.conv1 = unetConv2(self.in_channels, filters[0], self.is_batchnorm, device=device, dtype=dtype)
-        self.maxpool1 = nn.MaxPool2d(kernel_size=2)
+        self.maxpool1 = nn.Maxpool(kernel_size=2, device=device)
 
         self.conv2 = unetConv2(filters[0], filters[1], self.is_batchnorm, device=device, dtype=dtype)
-        self.maxpool2 = nn.MaxPool2d(kernel_size=2)
+        self.maxpool2 = nn.Maxpool(kernel_size=2, device=device)
 
         self.conv3 = unetConv2(filters[1], filters[2], self.is_batchnorm, device=device, dtype=dtype)
-        self.maxpool3 = nn.MaxPool2d(kernel_size=2)
+        self.maxpool3 = nn.Maxpool(kernel_size=2, device=device)
 
         self.conv4 = unetConv2(filters[2], filters[3], self.is_batchnorm, device=device, dtype=dtype)
-        self.maxpool4 = nn.MaxPool2d(kernel_size=2)
+        self.maxpool4 = nn.Maxpool(kernel_size=2, device=device)
 
         self.center = unetConv2(filters[3], filters[4], self.is_batchnorm, device=device, dtype=dtype)
 
