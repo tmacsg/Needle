@@ -1,5 +1,6 @@
 """The module.
 """
+import pickle
 from typing import List
 from needle.autograd import Tensor
 from needle import ops
@@ -47,6 +48,26 @@ def _child_modules(value: object) -> List["Module"]:
         return modules
     else:
         return []
+
+
+
+def save(obj, f, pickle_module=pickle):
+    """Save an object to a file.
+
+    Args:
+        obj: The object to be saved.
+        f: A file-like object (has to implement write and flush) or a string
+            containing a file name.
+        pickle_module: module to use for pickling metadata and objects
+    """
+    if isinstance(f, str):
+        f = open(f, "wb")
+
+    # Serialize the object using pickle
+    pickle_module.dump(obj, f, pickle.HIGHEST_PROTOCOL)
+
+    # Flush the file to ensure that it is written to disk
+    f.flush()
 
 
 class Module:

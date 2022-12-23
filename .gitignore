@@ -1,4 +1,6 @@
 /*.ipynb
+*.ipynb
+/.ipynb_checkpoints
 /python/needle/__pycache__
 /python/needle/backend_ndarray/__pycache__
 /python/needle/backend_ndarray/ndarray_backend_cpu.cpython-37m-x86_64-linux-gnu.so
