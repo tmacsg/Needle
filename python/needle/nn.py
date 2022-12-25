@@ -291,7 +291,10 @@ class Conv(Module):
         self.out_channels = out_channels
         self.kernel_size = kernel_size
         self.stride = stride
-        self.padding = kernel_size // 2 if padding is None else padding
+        if padding is None:
+            self.padding = kernel_size // 2 
+        else:
+            self.padding = padding
 
         ### BEGIN YOUR SOLUTION
         receptive_field_size = kernel_size ** 2
@@ -351,7 +354,10 @@ class Conv_transposed(Module):
         self.out_channels = out_channels
         self.kernel_size = kernel_size
         self.stride = stride
-        self.padding = kernel_size // 2 if padding is None else padding
+        if padding is None: 
+            self.padding = kernel_size // 2
+        else:
+            self.padding = padding
 
         ### BEGIN YOUR SOLUTION
         receptive_field_size = kernel_size ** 2

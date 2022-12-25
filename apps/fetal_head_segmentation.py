@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from tqdm import trange
 import os
 import sys
-sys.path.append('../python')
+sys.path.append('./python')
 import needle as ndl
 import needle.nn as nn
 from needle import backend_ndarray as nd
@@ -153,7 +153,7 @@ def perform_learning(model, optimizer, path, all_names, batch_size,
 
 
 def qualitative_assessment():
-	path = '../data/us_dataset'
+	path = './data/us_dataset'
 	all_names = os.listdir(os.path.join(path, 'all_images'))
 
 	splits = [0.8, 0.1, 0.1]
@@ -204,10 +204,9 @@ def qualitative_assessment():
 			break
 
 
-
 if __name__ == "__main__":
 	
-	path = '../data/us_dataset'
+	path = './data/us_dataset'
 	all_names = os.listdir(os.path.join(path, 'all_images'))
 
 	lr = 1e-4

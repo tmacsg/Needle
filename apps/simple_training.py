@@ -1,10 +1,14 @@
 import sys
-sys.path.append('../python')
+sys.path.append('./python')
 import needle as ndl
 import needle.nn as nn
 from needle import backend_ndarray as nd
 from models import *
 import time
+import yaml
+import os
+from needle.data import *
+from tqdm import tqdm
 
 device = ndl.cpu()
 
@@ -152,9 +156,59 @@ def evaluate_ptb(model, data, seq_len=40, loss_fn=nn.SoftmaxLoss,
     ### END YOUR SOLUTION
 
 
+def train_fetal(model, optimizer, train_loader, test_loader, num_epochs, device):
+    """
+    
+    """
+    to_track = ["epoch", "train loss", "test loss"]
+
+    results = {}
+    for item in to_track:
+        results[item] = []          
+
+    for epoch in tqdm(range(num_epochs), desc="Epoch"):   
+        results["epoch"].append(epoch)    
+        train_loss, test_loss = run_fetal_epoch(model, optimizer, train_loader, test_loader, device)
+        results['train loss'].append(train_loss)
+        results['test loss'].append(test_loss)
+        print(f'Epoch: {epoch}, train loss: {train_loss}, test loss: {test_loss}. ')
+
+
+    return results
+
+def run_fetal_epoch(model, optimizer, train_loader, test_loader, device):
+    """ 
+    """
+    model.train()
+    train_loss = 0
+    for images, masks in train_loader:
+        optimizer.reset_grad()
+        X, y = ndl.Tensor(images, device=device), ndl.Tensor(masks, device=device)        
+        out = model(X)
+        B,C,H,W = out.shape
+        loss = nn.SoftmaxLoss()(out.transpose((1,2)).transpose((2,3)).reshape((B*H*W, C)), 
+            y.reshape((B*H*W,)))
+        loss.backward()
+        optimizer.step()    
+        train_loss += loss.detach().numpy()[0] * W * H
+        print('One bacth done: ', train_loss)
+
+
+    model.eval()
+    test_loss = 0
+    for images, masks in test_loader:
+        X, y = ndl.Tensor(images, device=device), ndl.Tensor(masks, device=device)        
+        out = model(X)
+        B,C,H,W = out.shape
+        loss = nn.SoftmaxLoss()(out.transpose((1,2)).transpose((2,3)).reshape((B*H*W, C)), 
+            y.reshape((B*H*W,)))        
+        test_loss += loss.numpy()[0] * W * H
+
+    return train_loss, test_loss
+
+
 if __name__ == "__main__":
     ### For testing purposes
-    device = ndl.cpu()
     #dataset = ndl.data.CIFAR10Dataset("./data/cifar-10-batches-py", train=True)
     #dataloader = ndl.data.DataLoader(\
     #         dataset=dataset,
@@ -166,10 +220,30 @@ if __name__ == "__main__":
     #train_cifar10(model, dataloader, n_epochs=10, optimizer=ndl.optim.Adam,
     #      lr=0.001, weight_decay=0.001)
 
-    corpus = ndl.data.Corpus("./data/ptb")
-    seq_len = 40
-    batch_size = 16
-    hidden_size = 100
-    train_data = ndl.data.batchify(corpus.train, batch_size, device=device, dtype="float32")
-    model = LanguageModel(1, len(corpus.dictionary), hidden_size, num_layers=2, device=device)
-    train_ptb(model, train_data, seq_len, n_epochs=10, device=device)
+    # corpus = ndl.data.Corpus("./data/ptb")
+    # seq_len = 40
+    # batch_size = 16
+    # hidden_size = 100
+    # train_data = ndl.data.batchify(corpus.train, batch_size, device=device, dtype="float32")
+    # model = LanguageModel(1, len(corpus.dictionary), hidden_size, num_layers=2, device=device)
+    # train_ptb(model, train_data, seq_len, n_epochs=10, device=device)
+
+    ### init settings
+    configs = {}
+    with open('./config/fetal.yaml') as f:
+        configs = configs | yaml.safe_load(f)
+
+
+    li = os.listdir(configs['data_path'] + '/all_images/')
+    train_image_count = int(configs['data_split'][0] * len(li))
+    train_list = li[0: train_image_count]
+    test_list = li[train_image_count:]
+    train_loader = DataLoader(FetalHeadDataset(configs['data_path'], train_list), batch_size=configs['batch_size'])
+    test_loader = DataLoader(FetalHeadDataset(configs['data_path'], test_list))
+
+    device = ndl.cuda() if configs['device'] == 'cuda' else ndl.cpu()
+    model = unet(feature_scale=16, in_channels=1, n_classes=2, device=device, dtype="float32", is_batchnorm=False)
+    # optimizer = ndl.optim.Adam(model.parameters(), lr=configs['lr'], weight_decay=configs['wt_dec'])
+    optimizer = ndl.optim.SGD(model.parameters())
+
+    train_fetal(model, optimizer, train_loader, test_loader, configs['num_epochs'], device)

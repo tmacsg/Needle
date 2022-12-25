@@ -1,9 +1,10 @@
 """Core data structures."""
 import needle
-from typing import List, Optional, NamedTuple, Tuple, Union, Dict
+from typing import List, Optional, NamedTuple, Tuple, Union, Dict, DefaultDict
 from collections import namedtuple
 import numpy
 from needle import init
+from collections import defaultdict
 
 # needle version
 LAZY_MODE = False
@@ -367,9 +368,8 @@ class Tensor(Value):
     def sigmoid(self):
         return needle.ops.Sigmoid()(self)
     
-    def max(self, axes=None):
-        array = self.realize_cached_data()        
-        return array.max(axes)
+    def max(self, axis=None, keepdims=False):        
+        return needle.ops.Max()(self, axis=axis, keepdims=keepdims)
 
     def flip(self, axes):
         return needle.ops.Flip(axes)(self)
@@ -405,6 +405,7 @@ def compute_gradient_of_variables(output_tensor, out_grad):
     reverse_topo_order = list(reversed(find_topo_sort([output_tensor])))
 
     ### BEGIN YOUR SOLUTION
+
     for node in reverse_topo_order:
         node.grad = sum_node_list(node_to_output_grads_list[node])
         if node.op is not None:
@@ -427,28 +428,27 @@ def find_topo_sort(node_list: List[Value]) -> List[Value]:
     sort.
     """
     ### BEGIN YOUR SOLUTION
-    max_len = 0
-    result = {}
+    visited: DefaultDict[Value, bool] = defaultdict(bool)
+    topo_order: List[Value] = list()
+
     for node in node_list:
-        temp = []
-        topo_sort_dfs(node, [], temp)
-        if len(temp) > max_len:
-            max_len = len(temp)
-            result = temp
-    return result
+        if not visited[node]:
+            topo_sort_dfs(node, visited, topo_order)
+
+    topo_order.reverse()
+    return topo_order
     ### END YOUR SOLUTION
 
 
 def topo_sort_dfs(node, visited, topo_order):
     """Post-order DFS"""
     ### BEGIN YOUR SOLUTION
-    if len(node.inputs) != 0:
-        for child in node.inputs:
-            topo_sort_dfs(child, visited, topo_order)
-    if node not in visited:
-        topo_order.append(node)
-        visited.append(node)
+    visited[node] = True
+    for i in node.inputs:
+        if not visited[i]:
+            topo_sort_dfs(i, visited, topo_order)
 
+    topo_order.insert(0, node)
     ### END YOUR SOLUTION
 
 

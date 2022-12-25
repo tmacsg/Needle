@@ -260,64 +260,102 @@ class CIFAR10Dataset(Dataset):
 		return dict
 
 
+# class FetalHeadDataset(Dataset):
+# 	""" Data loader class """
+# 	def __init__(
+#      self, 
+#      path: str, 
+#      file_list: List[str], 
+#      transforms: Optional[List] = None,
+#      p: Optional[int]=None
+#      ):
+# 		"""
+# 		Args:
+# 			path (str): path where images stored
+# 			file_list (List[str]): list of images in current split
+# 			transforms (List[str]): list of transforms
+# 			p (float): Probability of applying random aug (if transforms != None)
+# 		"""
+# 		self.path = path
+# 		self.file_list = file_list
+# 		self.transforms = transforms
+# 		self.p = p
+
+# 	def __len__(self):
+# 		return len(self.file_list)
+
+# 	def __getitem__(self, idx):
+# 		""" Preprocess and return a single sample & label """
+# 		img_name = os.path.join(self.path, 'all_images', self.file_list[idx])
+# 		mask_fname = self.file_list[idx].split('.')[0] + '_mask.png'
+# 		mask_name = os.path.join(self.path, 'all_masks', mask_fname)
+# 		img = Image.open(img_name)
+# 		mask = Image.open(mask_name)
+
+# 		# Resize to dimensions supported by Vanilla UNet
+# 		img = img.resize((572, 572), Image.LANCZOS)
+# 		mask = mask.resize((388, 388), Image.NEAREST)
+
+# 		img = np.array(img)
+# 		mask = np.array(mask)
+# 		mask[mask == 255] = 1
+
+# 		# mask = Tensor([mask])
+
+# 		img = cv2.cvtColor(img, cv2.COLOR_GRAY2RGB)
+# 		# img = Tensor(img)
+# 		img = img.transpose(2, 0, 1)
+
+# 		# select and apply random augmentation (if passed)
+# 		if self.transforms:
+# 			do_aug = np.random.choice([True, False], 1, p=[self.p,
+# 															1-self.p])
+# 			if do_aug:
+# 				aug_name = np.random.choice(self.transforms, 1)
+# 				img = aug_name[0](img)
+# 		# img = (img - torch.mean(img)) / torch.std(img)
+# 		img = (img - np.mean(img)) / np.std(img)
+# 		return img, mask
+	
+
 class FetalHeadDataset(Dataset):
 	""" Data loader class """
 	def __init__(
      self, 
-     path: str, 
-     file_list: List[str], 
+     data_path: str, 
+     image_name_list: List[str], 
      transforms: Optional[List] = None,
-     p: Optional[int]=None
      ):
 		"""
 		Args:
 			path (str): path where images stored
-			file_list (List[str]): list of images in current split
+			image_name_list (List[str]): list of image names
 			transforms (List[str]): list of transforms
-			p (float): Probability of applying random aug (if transforms != None)
 		"""
-		self.path = path
-		self.file_list = file_list
+		self.data_path = data_path
+		self.image_name_list = image_name_list
 		self.transforms = transforms
-		self.p = p
 
 	def __len__(self):
-		return len(self.file_list)
+		return len(self.image_name_list)
 
 	def __getitem__(self, idx):
 		""" Preprocess and return a single sample & label """
-		img_name = os.path.join(self.path, 'all_images', self.file_list[idx])
-		mask_fname = self.file_list[idx].split('.')[0] + '_mask.png'
-		mask_name = os.path.join(self.path, 'all_masks', mask_fname)
-		img = Image.open(img_name)
-		mask = Image.open(mask_name)
+		img_name = self.image_name_list[idx]
+		mask_name = img_name.split('.')[0] + '_mask.png'
 
-		# Resize to dimensions supported by Vanilla UNet
-		img = img.resize((572, 572), Image.LANCZOS)
-		mask = mask.resize((388, 388), Image.NEAREST)
+		image = cv2.imread(self.data_path + '/all_images/' + img_name, cv2.IMREAD_GRAYSCALE)
+		image = cv2.resize(image, (572, 572), cv2.INTER_LANCZOS4)
+		image = self.apply_transforms(image)
+		image = image.astype(np.float32) / 255.0 
+		image = np.expand_dims(image, 0)
 
-		img = np.array(img)
-		mask = np.array(mask)
-		mask[mask == 255] = 1
+		mask = cv2.imread(self.data_path + '/all_masks/' + mask_name, cv2.IMREAD_GRAYSCALE)
+		mask = cv2.resize(mask, (388, 388), cv2.INTER_NEAREST)
+		mask //= 255
+		mask = np.expand_dims(mask, 0)
 
-		# mask = Tensor([mask])
-
-		img = cv2.cvtColor(img, cv2.COLOR_GRAY2RGB)
-		# img = Tensor(img)
-		img = img.transpose(2, 0, 1)
-
-		# select and apply random augmentation (if passed)
-		if self.transforms:
-			do_aug = np.random.choice([True, False], 1, p=[self.p,
-															1-self.p])
-			if do_aug:
-				aug_name = np.random.choice(self.transforms, 1)
-				img = aug_name[0](img)
-		# img = (img - torch.mean(img)) / torch.std(img)
-		img = (img - np.mean(img)) / np.std(img)
-		return img, mask
-	
-
+		return image, mask
 
 class NDArrayDataset(Dataset):
 	def __init__(self, *arrays):
@@ -328,10 +366,6 @@ class NDArrayDataset(Dataset):
 
 	def __getitem__(self, i) -> object:
 		return tuple([a[i] for a in self.arrays])
-
-
-
-
 
 
 class Dictionary(object):
@@ -365,8 +399,6 @@ class Dictionary(object):
 		### BEGIN YOUR SOLUTION
 		raise NotImplementedError()
 		### END YOUR SOLUTION
-
-
 
 class Corpus(object):
 	"""

@@ -392,16 +392,13 @@ def exp(a):
 class ReLU(TensorOp):
     def compute(self, a):
         ### BEGIN YOUR SOLUTION
-        zeros = a.device.zeros(a.shape)
-        return a.maximum(zeros)
+        return a.maximum(0)
         ### END YOUR SOLUTION
 
     def gradient(self, out_grad, node):
         ### BEGIN YOUR SOLUTION
         inp = node.inputs[0]
-        zeros = init.zeros(*inp.shape, device=inp.device)
-        mask = inp.realize_cached_data() > zeros.realize_cached_data()
-
+        mask = inp.realize_cached_data() > 0
         return out_grad * Tensor(mask, device=out_grad.device)
         ### END YOUR SOLUTION
 
@@ -492,6 +489,52 @@ class Sigmoid(TensorOp):
 
 def sigmoid(a):
     return Sigmoid()(a)
+
+class Max(TensorOp):
+    """
+    Max operator, only support 1 axis
+    """
+    def __init__(self, axis: Optional[int] = None, keepdims = False):
+        self.axis = axis
+        self.keepdims = keepdims
+    
+    def compute(self, a):
+        return a.max(axis=self.axis, keepdims=self.keepdims)
+
+    def gradient(self, out_grad, node):
+        ### BEGIN YOUR SOLUTION
+        if self.axis is None:
+            shape = node.inputs[0].shape
+            in_array = node.inputs[0].realize_cached_data()
+            out_shape = [1 for _ in range(len(shape))]
+            out_array = self.compute(in_array).reshape((out_shape)).broadcast_to(shape)
+            in_out_match = (out_array == in_array)
+            match_count = in_out_match.sum()
+            match_count = match_count.reshape(out_shape)
+            match_count = Tensor(match_count, device=out_grad.device).broadcast_to(shape)
+            out_broadcast_tensor = out_grad.reshape(out_shape).broadcast_to(shape)
+            return out_broadcast_tensor * Tensor(in_out_match, device=out_grad.device) / match_count
+
+        out_shape = list(out_grad.shape)
+        in_shape = node.inputs[0].shape
+        if not self.keepdims:
+            out_shape.insert(self.axis, 1)
+
+        in_array = node.inputs[0].realize_cached_data()
+        if self.keepdims == True:
+            out_array = self.compute(in_array).broadcast_to(in_shape)
+        else:
+            out_array = self.compute(in_array).reshape(out_shape).broadcast_to(in_shape)
+        out_broadcast_tensor = out_grad.reshape(out_shape).broadcast_to(in_shape)
+        in_out_match = (out_array == in_array)
+        match_count = in_out_match.sum(axis=self.axis, keepdims=True)
+        match_count = Tensor(match_count, device=out_grad.device).broadcast_to(in_shape)
+ 
+        return out_broadcast_tensor * Tensor(in_out_match, device=out_grad.device) / match_count
+
+def max(a, axis, keepdim=False):
+    return Max(axis=axis, keepdims=keepdim)(a)
+
 
 class Stack(TensorOp):
     def __init__(self, axis: int):
@@ -803,6 +846,13 @@ def undilate(a, axes, dilation):
 
 
 class Conv(TensorOp):
+    """
+    Conv2D operator
+    input shape : 
+        A: NHWC, B: KKCC'
+    output shape:
+        out: NH'W'C'
+    """
     def __init__(self, stride: Optional[int] = 1, padding: Optional[int] = 0):
         self.stride = stride
         self.padding = padding
@@ -850,7 +900,7 @@ class Conv(TensorOp):
         out1 = out1[:,0:b-self.stride+1,0:c-self.stride+1,:]
 
         B1 = flip(B, axes=(0,1)).realize_cached_data().permute((0,1,3,2))
-        result1 = conv(Tensor(out1), Tensor(B1), padding=K-1).realize_cached_data()
+        result1 = conv(Tensor(out1, device=out_grad.device), Tensor(B1, device=out_grad.device), padding=K-1).realize_cached_data()
 
         a,b,c,d = result1.shape
 
@@ -866,9 +916,10 @@ class Conv(TensorOp):
         out2 = out2[0:,0:b-self.stride+1,0:c-self.stride+1,0:]
         out2 = out2.permute((1,2,0,3))
         A2 = A1.permute((3,1,2,0))
-        result2 = conv(Tensor(A2), Tensor(out2),padding=0).realize_cached_data()
+        result2 = conv(Tensor(A2, device=out_grad.device), Tensor(out2, device=out_grad.device),padding=0).realize_cached_data()
         result2 = result2.permute((1,2,0,3))
 
+        # print(f'grad in conv: {result1.shape}, {result2.shape}')
         return Tensor(result1, device=out_grad.device), Tensor(result2, device=out_grad.device)
         ### END YOUR SOLUTION
 
@@ -891,7 +942,10 @@ class Conv_transposed(TensorOp):
         s_ = self.stride - 1
         p_ = K - self.padding - 1
         A1 = A.dilate((1,2), s_)
-        A1 = A1[:,0:A1.shape[1]-s_,0:A1.shape[2]-s_,:].pad(((0,0),(p_,p_),(p_,p_),(0,0)))
+        if p_ > 0:
+            A1 = A1[:,0:A1.shape[1]-s_,0:A1.shape[2]-s_,:].pad(((0,0),(p_,p_),(p_,p_),(0,0)))
+        else:
+            A1 = A1[:,0:A1.shape[1]-s_,0:A1.shape[2]-s_,:].unpad(((0,0),(-p_,-p_),(-p_,-p_),(0,0)))
         B1 = B.flip(axes=(0,1))
         return conv(Tensor(A1,device=A1.device), Tensor(B1,device=B1.device), padding=0).realize_cached_data()
         
@@ -906,10 +960,15 @@ class Conv_transposed(TensorOp):
         p_ = K - self.padding - 1
         A1 = dilate(A, axes=(1,2), dilation=s_)  
         A2 = unpad(A1, ((0,0),(0,s_),(0,s_),(0,0)))
-        A3 = pad(A2, ((0,0),(p_,p_),(p_,p_),(0,0)))
+        if p_ > 0:
+            A3 = pad(A2, ((0,0),(p_,p_),(p_,p_),(0,0)))
+        else:
+            A3 = unpad(A2, ((0,0),(-p_,-p_),(-p_,-p_),(0,0)))
         B1 = flip(B, axes=(0,1))
         out = conv(A3, B1, padding=0)
         out.backward()
+
+        # print(f'grad in conv_transposed: {A.grad.shape}, {B.grad.shape}')
         return A.grad, B.grad
         ### END YOUR SOLUTION
 
@@ -949,6 +1008,7 @@ class Maxpool(TensorOp):
         grad = out_grad.realize_cached_data().reshape((*out_grad.shape, 1, 1)).broadcast_to((*out_grad.shape, k, k))
         grad = grad.permute((0,1,2,4,3,5)).reshape((N,C,H,W))
 
+        # print(f'grad in maxpool: grad {grad.shape}, ratio {ratio.shape}')
         return Tensor(grad * ratio, device=out_grad.device)
         ### END YOUR SOLUTION
 
@@ -999,6 +1059,9 @@ class Concat(TensorOp):
             temp = output_array[tuple(sl)]
             result.append(Tensor(temp, device=out_grad.device))
             offset += arg.shape[self.axis]
+
+        # for r in result:
+        #     print(f'grad in concat: {r.shape}')
         return make_tuple(*result)
         ### END YOUR SOLUTION
 
