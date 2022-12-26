@@ -259,65 +259,6 @@ class CIFAR10Dataset(Dataset):
 			dict = pickle.load(fo, encoding='bytes')
 		return dict
 
-
-# class FetalHeadDataset(Dataset):
-# 	""" Data loader class """
-# 	def __init__(
-#      self, 
-#      path: str, 
-#      file_list: List[str], 
-#      transforms: Optional[List] = None,
-#      p: Optional[int]=None
-#      ):
-# 		"""
-# 		Args:
-# 			path (str): path where images stored
-# 			file_list (List[str]): list of images in current split
-# 			transforms (List[str]): list of transforms
-# 			p (float): Probability of applying random aug (if transforms != None)
-# 		"""
-# 		self.path = path
-# 		self.file_list = file_list
-# 		self.transforms = transforms
-# 		self.p = p
-
-# 	def __len__(self):
-# 		return len(self.file_list)
-
-# 	def __getitem__(self, idx):
-# 		""" Preprocess and return a single sample & label """
-# 		img_name = os.path.join(self.path, 'all_images', self.file_list[idx])
-# 		mask_fname = self.file_list[idx].split('.')[0] + '_mask.png'
-# 		mask_name = os.path.join(self.path, 'all_masks', mask_fname)
-# 		img = Image.open(img_name)
-# 		mask = Image.open(mask_name)
-
-# 		# Resize to dimensions supported by Vanilla UNet
-# 		img = img.resize((572, 572), Image.LANCZOS)
-# 		mask = mask.resize((388, 388), Image.NEAREST)
-
-# 		img = np.array(img)
-# 		mask = np.array(mask)
-# 		mask[mask == 255] = 1
-
-# 		# mask = Tensor([mask])
-
-# 		img = cv2.cvtColor(img, cv2.COLOR_GRAY2RGB)
-# 		# img = Tensor(img)
-# 		img = img.transpose(2, 0, 1)
-
-# 		# select and apply random augmentation (if passed)
-# 		if self.transforms:
-# 			do_aug = np.random.choice([True, False], 1, p=[self.p,
-# 															1-self.p])
-# 			if do_aug:
-# 				aug_name = np.random.choice(self.transforms, 1)
-# 				img = aug_name[0](img)
-# 		# img = (img - torch.mean(img)) / torch.std(img)
-# 		img = (img - np.mean(img)) / np.std(img)
-# 		return img, mask
-	
-
 class FetalHeadDataset(Dataset):
 	""" Data loader class """
 	def __init__(

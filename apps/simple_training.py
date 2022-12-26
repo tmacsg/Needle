@@ -170,10 +170,10 @@ def train_fetal(model, optimizer, train_loader, test_loader, num_epochs, device)
     for epoch in tqdm(range(num_epochs), desc="Epoch"):   
         results["epoch"].append(epoch)    
         train_loss, test_loss = run_fetal_epoch(model, optimizer, train_loader, test_loader, device)
-        results['train loss'].append(train_loss)
-        results['test loss'].append(test_loss)
-        print(f'Epoch: {epoch}, train loss: {train_loss}, test loss: {test_loss}. ')
-
+        cur_train_loss, cur_test_loss = np.mean(train_loss), np.mean(test_loss)
+        results['train loss'].append(cur_train_loss)
+        results['test loss'].append(cur_test_loss)
+        print(f'Epoch: {epoch}, train loss: {cur_train_loss}, test loss: {cur_test_loss}. ')
 
     return results
 
@@ -181,7 +181,7 @@ def run_fetal_epoch(model, optimizer, train_loader, test_loader, device):
     """ 
     """
     model.train()
-    train_loss = 0
+    train_loss = []
     for images, masks in train_loader:
         optimizer.reset_grad()
         X, y = ndl.Tensor(images, device=device), ndl.Tensor(masks, device=device)        
@@ -191,19 +191,19 @@ def run_fetal_epoch(model, optimizer, train_loader, test_loader, device):
             y.reshape((B*H*W,)))
         loss.backward()
         optimizer.step()    
-        train_loss += loss.detach().numpy()[0] * W * H
-        print('One bacth done: ', train_loss)
+        train_loss.append(loss.detach().numpy()[0])
+        # print('One batch done, loss: ', train_loss[-1])
 
 
     model.eval()
-    test_loss = 0
+    test_loss = []
     for images, masks in test_loader:
         X, y = ndl.Tensor(images, device=device), ndl.Tensor(masks, device=device)        
         out = model(X)
         B,C,H,W = out.shape
         loss = nn.SoftmaxLoss()(out.transpose((1,2)).transpose((2,3)).reshape((B*H*W, C)), 
             y.reshape((B*H*W,)))        
-        test_loss += loss.numpy()[0] * W * H
+        test_loss.append(loss.numpy()[0])
 
     return train_loss, test_loss
 
@@ -229,11 +229,10 @@ if __name__ == "__main__":
     # model = LanguageModel(1, len(corpus.dictionary), hidden_size, num_layers=2, device=device)
     # train_ptb(model, train_data, seq_len, n_epochs=10, device=device)
 
-    ### init settings
+
     configs = {}
     with open('./config/fetal.yaml') as f:
         configs = configs | yaml.safe_load(f)
-
 
     li = os.listdir(configs['data_path'] + '/all_images/')
     train_image_count = int(configs['data_split'][0] * len(li))
@@ -243,8 +242,8 @@ if __name__ == "__main__":
     test_loader = DataLoader(FetalHeadDataset(configs['data_path'], test_list))
 
     device = ndl.cuda() if configs['device'] == 'cuda' else ndl.cpu()
-    model = unet(feature_scale=4, in_channels=1, n_classes=2, device=device, dtype="float32", is_batchnorm=True)
-    # optimizer = ndl.optim.Adam(model.parameters(), lr=configs['lr'], weight_decay=configs['wt_dec'])
-    optimizer = ndl.optim.Adam(model.parameters())
+    model = unet(feature_scale=configs['feature_scale'], in_channels=1, n_classes=2, 
+                device=device, dtype="float32", is_batchnorm=configs['is_batchnorm'])
+    optimizer = ndl.optim.Adam(model.parameters(), lr=configs['lr'], weight_decay=configs['wt_dec'])
 
     train_fetal(model, optimizer, train_loader, test_loader, configs['num_epochs'], device)

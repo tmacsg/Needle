@@ -202,9 +202,10 @@ class BatchNorm1d(Module):
             self.running_var = (1 - self.momentum) * self.running_var + self.momentum * batch_var
             return w * temp + b
         else:
+            running_mean = self.running_mean.reshape((1,self.dim)).broadcast_to(x.shape)
             running_var = self.running_var.reshape((1,self.dim)).broadcast_to(x.shape)
             running_std = (running_var + self.eps) ** 0.5
-            temp = (x.data - self.running_mean) / running_std
+            temp = (x.data - running_mean) / running_std
             return w * temp + b
         ### END YOUR SOLUTION
 
@@ -281,7 +282,7 @@ class Conv(Module):
     No grouped convolution or dilation
     Only supports square kernels
     """
-    def __init__(self, in_channels, out_channels, kernel_size, stride=1, padding = None, bias=True, device=None, dtype="float32"):
+    def __init__(self, in_channels, out_channels, kernel_size, stride=1, padding = None, bias=None, device=None, dtype="float32"):
         super().__init__()
         if isinstance(kernel_size, tuple):
             kernel_size = kernel_size[0]
