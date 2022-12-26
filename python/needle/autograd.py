@@ -405,6 +405,7 @@ def compute_gradient_of_variables(output_tensor, out_grad):
 
     ### BEGIN YOUR SOLUTION
 
+
     for node in reverse_topo_order:
         node.grad = sum_node_list(node_to_output_grads_list[node])
         if node.op is not None:

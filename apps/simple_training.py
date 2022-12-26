@@ -243,8 +243,8 @@ if __name__ == "__main__":
     test_loader = DataLoader(FetalHeadDataset(configs['data_path'], test_list))
 
     device = ndl.cuda() if configs['device'] == 'cuda' else ndl.cpu()
-    model = unet(feature_scale=16, in_channels=1, n_classes=2, device=device, dtype="float32", is_batchnorm=False)
+    model = unet(feature_scale=4, in_channels=1, n_classes=2, device=device, dtype="float32", is_batchnorm=True)
     # optimizer = ndl.optim.Adam(model.parameters(), lr=configs['lr'], weight_decay=configs['wt_dec'])
-    optimizer = ndl.optim.SGD(model.parameters())
+    optimizer = ndl.optim.Adam(model.parameters())
 
     train_fetal(model, optimizer, train_loader, test_loader, configs['num_epochs'], device)

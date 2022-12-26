@@ -101,7 +101,7 @@ class EWiseMul(TensorOp):
         return a * b
 
     def gradient(self, out_grad: Tensor, node: Tensor):
-        lhs, rhs = node.inputs
+        lhs, rhs = node.inputs[0].data, node.inputs[1].data
         return out_grad * rhs, out_grad * lhs
 
 
@@ -137,7 +137,7 @@ class PowerScalar(TensorOp):
 
     def gradient(self, out_grad, node):
         ### BEGIN YOUR SOLUTION
-        a = node.inputs[0]
+        a = node.inputs[0].data
         return self.scalar * out_grad * a ** (self.scalar - 1)
         ### END YOUR SOLUTION
 
@@ -156,7 +156,7 @@ class EWiseDiv(TensorOp):
 
     def gradient(self, out_grad, node):
         ### BEGIN YOUR SOLUTION
-        lhs, rhs = node.inputs
+        lhs, rhs = node.inputs[0].data, node.inputs[1].data
         return out_grad / rhs, -out_grad * lhs / (rhs * rhs)
         ### END YOUR SOLUTION
 
@@ -272,7 +272,7 @@ class Summation(TensorOp):
 
     def gradient(self, out_grad, node):        
         ### BEGIN YOUR SOLUTION
-        operator = node.inputs[0]
+        operator = node.inputs[0].data
         if self.axes is None:
             # return Tensor(operator.device.full(operator.shape, out_grad.numpy()[0]))
             return init.constant(*operator.shape, c=out_grad.numpy()[0], device=out_grad.device)
@@ -302,7 +302,7 @@ class MatMul(TensorOp):
 
     def gradient(self, out_grad, node):
         ### BEGIN YOUR SOLUTION
-        lhs, rhs = node.inputs
+        lhs, rhs = node.inputs[0].data, node.inputs[1].data
         temp_1 = out_grad @ rhs.transpose()
         temp_2 = lhs.transpose() @ out_grad
 
@@ -315,8 +315,8 @@ class MatMul(TensorOp):
         dim1 = reduce_shape(temp_1.shape) //  reduce_shape(lhs.shape) 
         dim2 = reduce_shape(temp_2.shape) //  reduce_shape(rhs.shape) 
 
-        temp_1 = reshape(temp_1, (dim1, *lhs.shape))
-        temp_2 = reshape(temp_2, (dim2, *rhs.shape))
+        temp_1 = temp_1.reshape((dim1, *lhs.shape))
+        temp_2 = temp_2.reshape((dim2, *rhs.shape))
         return summation(temp_1, 0), summation(temp_2,0)
         ### END YOUR SOLUTION
 
@@ -349,7 +349,7 @@ class Log(TensorOp):
 
     def gradient(self, out_grad, node):
         ### BEGIN YOUR SOLUTION
-        inp = node.inputs[0]
+        inp = node.inputs[0].data
         ones = init.ones(*inp.shape, device=out_grad.device)
         return out_grad * (ones / inp)
         ### END YOUR SOLUTION
@@ -367,8 +367,8 @@ class Exp(TensorOp):
 
     def gradient(self, out_grad, node):
         ### BEGIN YOUR SOLUTION
-        inp = node.inputs[0]
-        result =  out_grad * Tensor(self.compute(inp), device=out_grad.device)
+        inp = node.inputs[0].realize_cached_data()
+        result =  out_grad * Tensor(self.compute(inp), device=out_grad.device, requires_grad=False)
         return result
         ### END YOUR SOLUTION
 
@@ -385,9 +385,9 @@ class ReLU(TensorOp):
 
     def gradient(self, out_grad, node):
         ### BEGIN YOUR SOLUTION
-        inp = node.inputs[0]
-        mask = inp.realize_cached_data() > 0
-        return out_grad * Tensor(mask, device=out_grad.device)
+        inp = node.inputs[0].realize_cached_data()
+        mask = inp > 0
+        return out_grad * Tensor(mask, device=out_grad.device, requires_grad=False)
         ### END YOUR SOLUTION
 
 
@@ -422,7 +422,7 @@ class LogSumExp(TensorOp):
 
     def gradient(self, out_grad, node):
         ### BEGIN YOUR SOLUTION
-        Z = node.inputs[0]
+        Z = node.inputs[0].data
         Z_array = Z.realize_cached_data()
         Z_shape = list(Z.shape)
         if self.axes is not None:
@@ -436,8 +436,8 @@ class LogSumExp(TensorOp):
         
         c = Tensor(Z_array.max(axis=self.axes), device=out_grad.device, 
                 requires_grad=False).reshape(Z_shape).broadcast_to(Z.shape)
-        sum_of_exp = summation(exp(Z.data-c.data), axes=self.axes).reshape(Z_shape).broadcast_to(Z.shape)
-        softmax = exp(Z.data-c.data) / sum_of_exp
+        sum_of_exp = summation(exp(Z-c), axes=self.axes).reshape(Z_shape).broadcast_to(Z.shape)
+        softmax = exp(Z-c) / sum_of_exp
         return out_grad.reshape(Z_shape).broadcast_to(Z.shape) * softmax
 
         ### END YOUR SOLUTION
@@ -455,8 +455,8 @@ class Tanh(TensorOp):
 
     def gradient(self, out_grad, node):
         ### BEGIN YOUR SOLUTION
-        a = Tensor(self.compute(node.inputs[0]), device=out_grad.device)
-        ones = init.ones(*a.shape, device=a.device)
+        a = Tensor(self.compute(node.inputs[0].realize_cached_data()), device=out_grad.device, requires_grad=False)
+        ones = init.ones(*a.shape, device=a.device, requires_grad=False)
         return out_grad * (ones - a * a)
         ### END YOUR SOLUTION
 
@@ -471,8 +471,8 @@ class Sigmoid(TensorOp):
 
     def gradient(self, out_grad, node):
         ### BEGIN YOUR SOLUTION
-        a = Tensor(self.compute(node.inputs[0], device=out_grad.device))
-        ones = init.ones(*a.shape, device=a.device)
+        a = Tensor(self.compute(node.inputs[0].realize_cached_data()), device=out_grad.device, requires_grad=False)
+        ones = init.ones(*a.shape, device=a.device, requires_grad=False)
         return out_grad * a * (ones - a)
         ### END YOUR SOLUTION
 
@@ -519,7 +519,7 @@ class Max(TensorOp):
         match_count = in_out_match.sum(axis=self.axis, keepdims=True)
         match_count = Tensor(match_count, device=out_grad.device).broadcast_to(in_shape)
  
-        return out_broadcast_tensor * Tensor(in_out_match, device=out_grad.device) / match_count
+        return out_broadcast_tensor * Tensor(in_out_match, device=out_grad.device, requires_grad=False) / match_count
 
 def max(a, axis, keepdim=False):
     return Max(axis=axis, keepdims=keepdim)(a)
@@ -756,7 +756,7 @@ class Pad(TensorOp):
 
     def gradient(self, out_grad, node):
         array = out_grad.realize_cached_data().unpad(self.axes)
-        return Tensor(array, device=out_grad.device)
+        return Tensor(array, device=out_grad.device, requires_grad=False)
 
 def pad(a, axes):
     return Pad(axes)(a)
@@ -771,7 +771,7 @@ class UnPad(TensorOp):
 
     def gradient(self, out_grad, node):
         array = out_grad.realize_cached_data().pad(self.axes)
-        return Tensor(array, device=out_grad.device)
+        return Tensor(array, device=out_grad.device, requires_grad=False)
 
 def unpad(a, axes):
     return UnPad(axes)(a)
@@ -913,7 +913,8 @@ class Conv(TensorOp):
         result2 = result2.permute((1,2,0,3))
 
         # print(f'grad in conv: {result1.shape}, {result2.shape}')
-        return Tensor(result1, device=out_grad.device), Tensor(result2, device=out_grad.device)
+        return Tensor(result1, device=out_grad.device, requires_grad=False), \
+                Tensor(result2, device=out_grad.device, requires_grad=False)
         ### END YOUR SOLUTION
 
 
@@ -940,13 +941,16 @@ class Conv_transposed(TensorOp):
         else:
             A1 = A1[:,0:A1.shape[1]-s_,0:A1.shape[2]-s_,:].unpad(((0,0),(-p_,-p_),(-p_,-p_),(0,0)))
         B1 = B.flip(axes=(0,1))
-        return conv(Tensor(A1,device=A1.device, requires_grad=False), Tensor(B1,device=B1.device, requires_grad=False), padding=0).realize_cached_data()
+        return conv(Tensor(A1,device=A1.device, requires_grad=False), 
+                    Tensor(B1,device=B1.device, requires_grad=False), 
+                    padding=0).realize_cached_data()
         
         ### END YOUR SOLUTION
 
     def gradient(self, out_grad, node):
         ### BEGIN YOUR SOLUTION
-        A, B = node.inputs    
+        A = Tensor(node.inputs[0].realize_cached_data(), device=out_grad.device)
+        B = Tensor(node.inputs[1].realize_cached_data(), device=out_grad.device)    
         N,H0,W0,C1 = A.shape
         K,_,_,C2 = B.shape
         s_ = self.stride - 1
@@ -962,7 +966,7 @@ class Conv_transposed(TensorOp):
         out.backward()
 
         # print(f'grad in conv_transposed: {A.grad.shape}, {B.grad.shape}')
-        return A.grad, B.grad
+        return A.grad.data, B.grad.data
         ### END YOUR SOLUTION
 
 
@@ -1002,7 +1006,7 @@ class Maxpool(TensorOp):
         grad = grad.permute((0,1,2,4,3,5)).reshape((N,C,H,W))
 
         # print(f'grad in maxpool: grad {grad.shape}, ratio {ratio.shape}')
-        return Tensor(grad * ratio, device=out_grad.device)
+        return Tensor(grad * ratio, device=out_grad.device, requires_grad=False)
         ### END YOUR SOLUTION
 
 
@@ -1050,7 +1054,7 @@ class Concat(TensorOp):
             temp = arg.realize_cached_data().device.zeros(arg.shape)
             sl[self.axis] = slice(0+offset, arg.shape[self.axis]+offset, 1)          
             temp = output_array[tuple(sl)]
-            result.append(Tensor(temp, device=out_grad.device))
+            result.append(Tensor(temp, device=out_grad.device, requires_grad=False))
             offset += arg.shape[self.axis]
 
         # for r in result:

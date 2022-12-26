@@ -16,7 +16,7 @@ class ResNet9(ndl.nn.Module):
 
         def ConvBN(a,b,k,s, device=self.device):
             return nn.Sequential(
-                nn.Conv(a, b, k, s, device=device, dtype="float32"),
+                nn.Conv(a, b, k, s, device=device, dtype="float32", bias=False),
                 nn.BatchNorm2d(dim=b, device=device, dtype="float32"),
                 nn.ReLU()
             )

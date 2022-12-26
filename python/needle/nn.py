@@ -166,7 +166,7 @@ class SoftmaxLoss(Module):
         if len(logits.shape) == 1:
             logits = ops.reshape(logits, (1, logits.shape[0])) 
         z_logSumExp = ops.logsumexp(logits, axes=(1,))
-        y_one_hot = init.one_hot(logits.shape[1], y, device=logits.device)
+        y_one_hot = init.one_hot(logits.shape[1], y.data, device=logits.device)
         z_y = ops.summation(ops.multiply(logits, y_one_hot), (1,))
         return ops.summation(z_logSumExp - z_y) / logits.shape[0]
         ### END YOUR SOLUTION
@@ -181,31 +181,30 @@ class BatchNorm1d(Module):
         ### BEGIN YOUR SOLUTION
         self.weight = Parameter(init.ones(dim, device=device, dtype=dtype)) # self.weight -> (dim,)
         self.bias = Parameter(init.zeros(dim, device=device, dtype=dtype)) # self.bias -> (dim,)
-        self.running_mean = init.zeros(dim, device=device, dtype=dtype).data # self.running_mean -> (dim,)
-        self.running_var = init.ones(dim, device=device, dtype=dtype).data # self.ruuning_var -> (dim,)
+        self.running_mean = init.zeros(dim, device=device, dtype=dtype, requires_grad=False) # self.running_mean -> (dim,)
+        self.running_var = init.ones(dim, device=device, dtype=dtype, requires_grad=False) # self.ruuning_var -> (dim,)
         ### END YOUR SOLUTION
 
     def forward(self, x: Tensor) -> Tensor:
         ### BEGIN YOUR SOLUTION
         assert self.dim == x.shape[1]
-        w = ops.broadcast_to(ops.reshape(self.weight, (1,self.dim)), x.shape)
-        b = ops.broadcast_to(ops.reshape(self.bias, (1,self.dim)), x.shape)
+        w = self.weight.reshape((1,self.dim)).broadcast_to(x.shape)
+        b = self.bias.reshape((1,self.dim)).broadcast_to(x.shape)
         if self.training:
-            batch_mean_ = ops.summation(x, (0,)) / x.shape[0]
-            batch_mean = ops.broadcast_to(ops.reshape(batch_mean_, (1, self.dim)), x.shape) 
-            batch_dev = x - batch_mean
+            batch_mean_ = ops.summation(x.data, (0,)) / x.shape[0]
+            batch_mean = batch_mean_.reshape((1,self.dim)).broadcast_to(x.shape)
+            batch_dev = x.data - batch_mean
             batch_var = ops.summation(batch_dev * batch_dev, (0,)) / x.shape[0]             
             batch_std_ = (batch_var + self.eps) ** 0.5 
-            batch_std = ops.broadcast_to(ops.reshape(batch_std_, (1, self.dim)), x.shape) 
-            temp = (x - batch_mean) / batch_std
-            self.running_mean = (1 - self.momentum) * self.running_mean + self.momentum * batch_mean_.data
-            self.running_var = (1 - self.momentum) * self.running_var + self.momentum * batch_var.data
+            batch_std = batch_std_.reshape((1,self.dim)).broadcast_to(x.shape)
+            temp = (x.data - batch_mean) / batch_std
+            self.running_mean = (1 - self.momentum) * self.running_mean + self.momentum * batch_mean_
+            self.running_var = (1 - self.momentum) * self.running_var + self.momentum * batch_var
             return w * temp + b
         else:
-            running_mean = ops.broadcast_to(ops.reshape(self.running_mean, (1, self.dim)), x.shape)
-            running_var = ops.broadcast_to(ops.reshape(self.running_var, (1, self.dim)), x.shape)
+            running_var = self.running_var.reshape((1,self.dim)).broadcast_to(x.shape)
             running_std = (running_var + self.eps) ** 0.5
-            temp = (x - self.running_mean) / running_std
+            temp = (x.data - self.running_mean) / running_std
             return w * temp + b
         ### END YOUR SOLUTION
 
