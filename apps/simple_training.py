@@ -183,16 +183,16 @@ def run_fetal_epoch(model, optimizer, train_loader, test_loader, device):
     model.train()
     train_loss = []
     for images, masks in train_loader:
-        optimizer.reset_grad()
+        optimizer.reset_grad()           
         X, y = ndl.Tensor(images, device=device), ndl.Tensor(masks, device=device)        
         out = model(X)
         B,C,H,W = out.shape
         loss = nn.SoftmaxLoss()(out.transpose((1,2)).transpose((2,3)).reshape((B*H*W, C)), 
             y.reshape((B*H*W,)))
         loss.backward()
-        optimizer.step()    
-        train_loss.append(loss.detach().numpy()[0])
-        # print('One batch done, loss: ', train_loss[-1])
+        optimizer.step() 
+        
+        train_loss.append(loss.data.numpy()[0])
 
 
     model.eval()
@@ -203,7 +203,7 @@ def run_fetal_epoch(model, optimizer, train_loader, test_loader, device):
         B,C,H,W = out.shape
         loss = nn.SoftmaxLoss()(out.transpose((1,2)).transpose((2,3)).reshape((B*H*W, C)), 
             y.reshape((B*H*W,)))        
-        test_loss.append(loss.numpy()[0])
+        test_loss.append(loss.data.numpy()[0])
 
     return train_loss, test_loss
 
@@ -236,9 +236,12 @@ if __name__ == "__main__":
 
     li = os.listdir(configs['data_path'] + '/all_images/')
     train_image_count = int(configs['data_split'][0] * len(li))
-    train_list = li[0: train_image_count]
-    test_list = li[train_image_count:]
-    train_loader = DataLoader(FetalHeadDataset(configs['data_path'], train_list), batch_size=configs['batch_size'])
+    # train_list = li[0: train_image_count]
+    # test_list = li[train_image_count:]
+    train_list = li[0: 20]
+    test_list = li[20:40]
+    train_loader = DataLoader(FetalHeadDataset(configs['data_path'], train_list), 
+                              batch_size=configs['batch_size'], shuffle=True)
     test_loader = DataLoader(FetalHeadDataset(configs['data_path'], test_list))
 
     device = ndl.cuda() if configs['device'] == 'cuda' else ndl.cpu()
