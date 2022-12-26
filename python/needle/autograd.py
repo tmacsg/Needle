@@ -34,7 +34,7 @@ class Op:
 
         """
         raise NotImplementedError()
-
+   
     def gradient(
         self, out_grad: "Value", node: "Value"
     ) -> Union["Value", Tuple["Value"]]:
@@ -69,7 +69,7 @@ class Op:
 
 class TensorOp(Op):
     """ Op class specialized to output tensors, will be alterate subclasses for other structures """
-
+    
     def __call__(self, *args):
         return Tensor.make_from_op(self, args)
 
@@ -388,7 +388,6 @@ class Tensor(Value):
     __radd__ = __add__
     __rmul__ = __mul__
     __rmatmul__ = __matmul__
-
 
 def compute_gradient_of_variables(output_tensor, out_grad):
     """Take gradient of output node with respect to each node in node_list.

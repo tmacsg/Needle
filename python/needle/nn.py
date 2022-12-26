@@ -7,6 +7,7 @@ import needle.init as init
 import numpy as np
 import math
 
+
 class Parameter(Tensor):
     """A special kind of tensor that represents parameters."""
 

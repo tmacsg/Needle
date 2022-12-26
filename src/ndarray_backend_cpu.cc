@@ -147,7 +147,7 @@ namespace needle
       for (int i = shape.size() - 2; i >= 0; i--)
       {
         compact_strides[i] = compact_strides[i + 1] * shape[i + 1];
-        std::cout << compact_strides[i] << " ";
+        // std::cout << compact_strides[i] << " ";
       }
 
       for (size_t i = 0; i < permutations.size(); i++)

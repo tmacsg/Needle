@@ -1,5 +1,6 @@
 import sys
 sys.path.append('./python')
+sys.path.append('./utils')
 import needle as ndl
 import needle.nn as nn
 from needle import backend_ndarray as nd

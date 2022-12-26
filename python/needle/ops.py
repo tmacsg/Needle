@@ -243,28 +243,16 @@ class BroadcastTo(TensorOp):
     def gradient(self, out_grad, node):
         ### BEGIN YOUR SOLUTION
         input_shape = node.inputs[0].shape
-        dim_diff = len(self.shape) - len(input_shape)
-        for i in range(dim_diff):
-            out_grad = summation(out_grad, 0)
+        # dim_diff = len(self.shape) - len(input_shape)
+        # for i in range(dim_diff):
+        #     out_grad = summation(out_grad, 0)
         for j in range(len(input_shape)):
             if input_shape[j] != out_grad.shape[j]:
-                out_grad = out_grad.transpose((0,j))
-                out_grad = summation(out_grad, 0)
-                out_grad = out_grad.reshape((1, *out_grad.shape))
-                out_grad = out_grad.transpose((0,j))
-        return out_grad
-        # input_shape = node.inputs[0].shape
-        # output_shape = out_grad.shape
-        # axes = []
-        # for i in range(len(output_shape)):
-        #     if input_shape[i] != output_shape[i]:
-        #         axes.append(i)
-
-        # temp_shape = output_shape
-        # for ax in axes:            
-        #     temp_shape[ax] = 1
-        #     out_grad = summation(out_grad, axes=ax).reshape(temp_shape)
-        # return out_grad
+                a = out_grad.transpose((0,j))
+                b = summation(a, 0)
+                c = b.reshape((1, *b.shape))
+                d = c.transpose((0,j))
+        return d
 
         ### END YOUR SOLUTION
 
@@ -446,9 +434,10 @@ class LogSumExp(TensorOp):
         else:
             Z_shape = [1 for _ in range(len(Z.shape))]
         
-        c = Tensor(Z_array.max(axis=self.axes), device=out_grad.device).reshape(Z_shape).broadcast_to(Z.shape)
-        sum_of_exp = summation(exp(Z-c), axes=self.axes).reshape(Z_shape).broadcast_to(Z.shape)
-        softmax = exp(Z-c) / sum_of_exp
+        c = Tensor(Z_array.max(axis=self.axes), device=out_grad.device, 
+                requires_grad=False).reshape(Z_shape).broadcast_to(Z.shape)
+        sum_of_exp = summation(exp(Z.data-c.data), axes=self.axes).reshape(Z_shape).broadcast_to(Z.shape)
+        softmax = exp(Z.data-c.data) / sum_of_exp
         return out_grad.reshape(Z_shape).broadcast_to(Z.shape) * softmax
 
         ### END YOUR SOLUTION
@@ -895,12 +884,14 @@ class Conv(TensorOp):
         _,H,W,_ = A1.shape
         A1 = A1[:,0:H-mod,0:W-mod,:]                                 
 
-        out1 = dilate(out_grad, axes=(1,2), dilation=self.stride-1).realize_cached_data()
+        out1 = dilate(out_grad.data, axes=(1,2), dilation=self.stride-1).realize_cached_data()
         a,b,c,d = out1.shape
         out1 = out1[:,0:b-self.stride+1,0:c-self.stride+1,:]
 
-        B1 = flip(B, axes=(0,1)).realize_cached_data().permute((0,1,3,2))
-        result1 = conv(Tensor(out1, device=out_grad.device), Tensor(B1, device=out_grad.device), padding=K-1).realize_cached_data()
+        B1 = flip(B.data, axes=(0,1)).realize_cached_data().permute((0,1,3,2))
+        result1 = conv(Tensor(out1, device=out_grad.device, requires_grad=False), 
+                Tensor(B1, device=out_grad.device, requires_grad=False), 
+                padding=K-1).realize_cached_data()
 
         a,b,c,d = result1.shape
 
@@ -911,12 +902,14 @@ class Conv(TensorOp):
             pad = A.shape[1] - result1.shape[1]
             result1 = result1.pad(((0,0),(0,pad),(0,pad),(0,0)))
 
-        out2 = dilate(out_grad, axes=(1,2), dilation=self.stride-1).realize_cached_data()
+        out2 = dilate(out_grad.data, axes=(1,2), dilation=self.stride-1).realize_cached_data()
         a,b,c,d = out2.shape
         out2 = out2[0:,0:b-self.stride+1,0:c-self.stride+1,0:]
         out2 = out2.permute((1,2,0,3))
         A2 = A1.permute((3,1,2,0))
-        result2 = conv(Tensor(A2, device=out_grad.device), Tensor(out2, device=out_grad.device),padding=0).realize_cached_data()
+        result2 = conv(Tensor(A2, device=out_grad.device, requires_grad=False), 
+                    Tensor(out2, device=out_grad.device, requires_grad=False),
+                    padding=0).realize_cached_data()
         result2 = result2.permute((1,2,0,3))
 
         # print(f'grad in conv: {result1.shape}, {result2.shape}')
@@ -947,7 +940,7 @@ class Conv_transposed(TensorOp):
         else:
             A1 = A1[:,0:A1.shape[1]-s_,0:A1.shape[2]-s_,:].unpad(((0,0),(-p_,-p_),(-p_,-p_),(0,0)))
         B1 = B.flip(axes=(0,1))
-        return conv(Tensor(A1,device=A1.device), Tensor(B1,device=B1.device), padding=0).realize_cached_data()
+        return conv(Tensor(A1,device=A1.device, requires_grad=False), Tensor(B1,device=B1.device, requires_grad=False), padding=0).realize_cached_data()
         
         ### END YOUR SOLUTION
 
