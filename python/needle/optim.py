@@ -40,7 +40,12 @@ class SGD(Optimizer):
         """
         Clips gradient norm of parameters.
         """
-        total_norm = np.linalg.norm(np.array([np.linalg.norm(p.grad.detach().numpy()).reshape((1,)) for p in self.params]))
+        temp = []
+        for p in self.params:
+            if p.grad:
+                temp.append(np.linalg.norm(p.grad.detach().numpy()).reshape((1,)))
+        total_norm = np.linalg.norm(np.array(temp))        
+        # total_norm = np.linalg.norm(np.array([np.linalg.norm(p.grad.detach().numpy()).reshape((1,)) for p in self.params]))
         clip_coef = max_norm / (total_norm + 1e-6)
         clip_coef_clamped = min(clip_coef, 1.0)
         for p in self.params:
@@ -94,7 +99,12 @@ class Adam(Optimizer):
         """
         Clips gradient norm of parameters.
         """
-        total_norm = np.linalg.norm(np.array([np.linalg.norm(p.grad.detach().numpy()).reshape((1,)) for p in self.params]))
+        temp = []
+        for p in self.params:
+            if p.grad:
+                temp.append(np.linalg.norm(p.grad.detach().numpy()).reshape((1,)))
+        total_norm = np.linalg.norm(np.array(temp))
+        # total_norm = np.linalg.norm(np.array([np.linalg.norm(p.grad.detach().numpy()).reshape((1,)) for p in self.params]))
         clip_coef = max_norm / (total_norm + 1e-6)
         clip_coef_clamped = min(clip_coef, 1.0)
         for p in self.params:

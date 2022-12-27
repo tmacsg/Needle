@@ -157,7 +157,7 @@ def evaluate_ptb(model, data, seq_len=40, loss_fn=nn.SoftmaxLoss,
     ### END YOUR SOLUTION
 
 
-def train_fetal(model, optimizer, train_loader, test_loader, num_epochs, device):
+def train_fetal(model, optimizer, train_loader, test_loader, num_epochs, device, model_save_path):
     """
     
     """
@@ -174,7 +174,9 @@ def train_fetal(model, optimizer, train_loader, test_loader, num_epochs, device)
         results['train loss'].append(cur_train_loss)
         results['test loss'].append(cur_test_loss)
         print(f'Epoch: {epoch}, train loss: {cur_train_loss}, test loss: {cur_test_loss}. ')
-
+        if epoch % 5 == 0 and epoch > 0:
+            ndl.save(model, model_save_path + f'/fetal_{epoch}.pkl')
+            ndl.draw_loss(results['epoch'], results['train loss'], results['test loss'], epoch)
     return results
 
 def run_fetal_epoch(model, optimizer, train_loader, test_loader, device):
@@ -205,6 +207,31 @@ def run_fetal_epoch(model, optimizer, train_loader, test_loader, device):
         test_loss.append(loss.data.numpy()[0])
 
     return train_loss, test_loss
+
+def inference(img_name):
+    configs = {}
+    with open('./config/fetal.yaml') as f:
+        configs = configs | yaml.safe_load(f)
+    img_path = configs['data_path'] + '/all_images/' + img_name
+    img_save_path = configs['image_save_path'] + '/' + img_name
+    device = ndl.cuda() if configs['device'] == 'cuda' else ndl.cpu()
+    model = unet(feature_scale=configs['feature_scale'], in_channels=1, n_classes=2, 
+                device=device, dtype="float32", is_batchnorm=configs['is_batchnorm'])
+    ndl.load(model, configs['model_save_path'] + '/fetal_20.pkl')
+
+    run_fetal_inference(model, device, img_path, img_save_path)
+
+def run_fetal_inference(model, device, img_path, img_save_path):
+    model.eval()
+    image = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
+    image = cv2.resize(image, (572, 572), cv2.INTER_LANCZOS4) 
+    image = (image / 255.0).astype(np.float32)
+    image = np.reshape(image, (1,1,*image.shape))
+    out = model(ndl.Tensor(image, device=device)).numpy()[0]  # 2,388,388
+    y = (out[1] > out[0]).astype(np.float32) * 255
+    y = np.reshape(y, (*y.shape, 1))
+    cv2.imwrite(img_save_path, y)
+
 
 
 if __name__ == "__main__":
@@ -248,4 +275,4 @@ if __name__ == "__main__":
                 device=device, dtype="float32", is_batchnorm=configs['is_batchnorm'])
     optimizer = ndl.optim.Adam(model.parameters(), lr=configs['lr'], weight_decay=configs['wt_dec'])
     # optimizer = ndl.optim.SGD(model.parameters())
-    train_fetal(model, optimizer, train_loader, test_loader, configs['num_epochs'], device)
+    train_fetal(model, optimizer, train_loader, test_loader, configs['num_epochs'], device, model_save_path=configs['model_save_path'])

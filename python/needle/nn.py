@@ -181,8 +181,8 @@ class BatchNorm1d(Module):
         ### BEGIN YOUR SOLUTION
         self.weight = Parameter(init.ones(dim, device=device, dtype=dtype, requires_grad=True)) # self.weight -> (dim,)
         self.bias = Parameter(init.zeros(dim, device=device, dtype=dtype, requires_grad=True)) # self.bias -> (dim,)
-        self.running_mean = init.zeros(dim, device=device, dtype=dtype, requires_grad=False) # self.running_mean -> (dim,)
-        self.running_var = init.ones(dim, device=device, dtype=dtype, requires_grad=False) # self.ruuning_var -> (dim,)
+        self.running_mean = Parameter(init.zeros(dim, device=device, dtype=dtype, requires_grad=False)) # self.running_mean -> (dim,)
+        self.running_var = Parameter(init.ones(dim, device=device, dtype=dtype, requires_grad=False)) # self.ruuning_var -> (dim,)
         ### END YOUR SOLUTION
 
     def forward(self, x: Tensor) -> Tensor:
@@ -198,12 +198,12 @@ class BatchNorm1d(Module):
             batch_std_ = (batch_var + self.eps) ** 0.5 
             batch_std = batch_std_.reshape((1,self.dim)).broadcast_to(x.shape)
             temp = (x - batch_mean) / batch_std
-            self.running_mean = (1 - self.momentum) * self.running_mean + self.momentum * batch_mean_.data
-            self.running_var = (1 - self.momentum) * self.running_var + self.momentum * batch_var.data
+            self.running_mean.data = (1 - self.momentum) * self.running_mean.data + self.momentum * batch_mean_.data
+            self.running_var.data = (1 - self.momentum) * self.running_var.data + self.momentum * batch_var.data
             return w * temp + b
         else:
-            running_mean = self.running_mean.reshape((1,self.dim)).broadcast_to(x.shape)
-            running_var = self.running_var.reshape((1,self.dim)).broadcast_to(x.shape)
+            running_mean = self.running_mean.data.reshape((1,self.dim)).broadcast_to(x.shape)
+            running_var = self.running_var.data.reshape((1,self.dim)).broadcast_to(x.shape)
             running_std = (running_var + self.eps) ** 0.5
             temp = (x - running_mean) / running_std
             return w * temp + b
