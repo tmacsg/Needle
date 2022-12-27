@@ -24,11 +24,13 @@ class SGD(Optimizer):
 
     def step(self):
         ### BEGIN YOUR SOLUTION
+        self.clip_grad_norm()
         for param in self.params:
             if param.grad is None:
                 continue
             if param not in self.u:
-                self.u[param] = ndl.init.zeros(*param.shape, device=param.device).data       
+                self.u[param] = ndl.init.zeros(*param.shape, device=param.device).data                   
+
             d_p = param.grad.data + self.weight_decay * param.data   
             self.u[param] = self.momentum * self.u[param] + (1 - self.momentum) * d_p          
             param.data -= self.lr * self.u[param]
@@ -40,7 +42,7 @@ class SGD(Optimizer):
         """
         total_norm = np.linalg.norm(np.array([np.linalg.norm(p.grad.detach().numpy()).reshape((1,)) for p in self.params]))
         clip_coef = max_norm / (total_norm + 1e-6)
-        clip_coef_clamped = min((np.asscalar(clip_coef), 1.0))
+        clip_coef_clamped = min(clip_coef, 1.0)
         for p in self.params:
             p.grad = p.grad.detach() * clip_coef_clamped
 
@@ -69,6 +71,7 @@ class Adam(Optimizer):
     def step(self):
         ### BEGIN YOUR SOLUTION
         self.t += 1
+        self.clip_grad_norm()
         for param in self.params:
             if param.grad is None:
                 continue
@@ -86,4 +89,14 @@ class Adam(Optimizer):
             v_corr = self.v[param] / (1 - self.beta2**self.t)           
 
             param.data -= self.lr * u_corr / (v_corr**0.5 + self.eps)
+
+    def clip_grad_norm(self, max_norm=0.25):
+        """
+        Clips gradient norm of parameters.
+        """
+        total_norm = np.linalg.norm(np.array([np.linalg.norm(p.grad.detach().numpy()).reshape((1,)) for p in self.params]))
+        clip_coef = max_norm / (total_norm + 1e-6)
+        clip_coef_clamped = min(clip_coef, 1.0)
+        for p in self.params:
+            p.grad = p.grad.detach() * clip_coef_clamped
         ### END YOUR SOLUTION

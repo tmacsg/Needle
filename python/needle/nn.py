@@ -98,7 +98,7 @@ class Linear(Module):
     def forward(self, X: Tensor) -> Tensor:
         ### BEGIN YOUR SOLUTION
         if self.bias:
-            temp = self.bias.broadcast_to((X.shape[0], self.out_features))
+            temp = self.bias.reshape((1, self.out_features)).broadcast_to((X.shape[0], self.out_features))
             return X @ self.weight + temp
         else:
             return X @ self.weight
@@ -179,8 +179,8 @@ class BatchNorm1d(Module):
         self.eps = eps
         self.momentum = momentum
         ### BEGIN YOUR SOLUTION
-        self.weight = Parameter(init.ones(dim, device=device, dtype=dtype)) # self.weight -> (dim,)
-        self.bias = Parameter(init.zeros(dim, device=device, dtype=dtype)) # self.bias -> (dim,)
+        self.weight = Parameter(init.ones(dim, device=device, dtype=dtype, requires_grad=True)) # self.weight -> (dim,)
+        self.bias = Parameter(init.zeros(dim, device=device, dtype=dtype, requires_grad=True)) # self.bias -> (dim,)
         self.running_mean = init.zeros(dim, device=device, dtype=dtype, requires_grad=False) # self.running_mean -> (dim,)
         self.running_var = init.ones(dim, device=device, dtype=dtype, requires_grad=False) # self.ruuning_var -> (dim,)
         ### END YOUR SOLUTION
@@ -191,21 +191,21 @@ class BatchNorm1d(Module):
         w = self.weight.reshape((1,self.dim)).broadcast_to(x.shape)
         b = self.bias.reshape((1,self.dim)).broadcast_to(x.shape)
         if self.training:
-            batch_mean_ = ops.summation(x.data, (0,)) / x.shape[0]
+            batch_mean_ = ops.summation(x, (0,)) / x.shape[0]
             batch_mean = batch_mean_.reshape((1,self.dim)).broadcast_to(x.shape)
-            batch_dev = x.data - batch_mean
+            batch_dev = x - batch_mean
             batch_var = ops.summation(batch_dev * batch_dev, (0,)) / x.shape[0]             
             batch_std_ = (batch_var + self.eps) ** 0.5 
             batch_std = batch_std_.reshape((1,self.dim)).broadcast_to(x.shape)
-            temp = (x.data - batch_mean) / batch_std
-            self.running_mean = (1 - self.momentum) * self.running_mean + self.momentum * batch_mean_
-            self.running_var = (1 - self.momentum) * self.running_var + self.momentum * batch_var
+            temp = (x - batch_mean) / batch_std
+            self.running_mean = (1 - self.momentum) * self.running_mean + self.momentum * batch_mean_.data
+            self.running_var = (1 - self.momentum) * self.running_var + self.momentum * batch_var.data
             return w * temp + b
         else:
             running_mean = self.running_mean.reshape((1,self.dim)).broadcast_to(x.shape)
             running_var = self.running_var.reshape((1,self.dim)).broadcast_to(x.shape)
             running_std = (running_var + self.eps) ** 0.5
-            temp = (x.data - running_mean) / running_std
+            temp = (x - running_mean) / running_std
             return w * temp + b
         ### END YOUR SOLUTION
 
@@ -308,7 +308,8 @@ class Conv(Module):
         self.bias = None
         if bias:
             val = 1.0/((in_channels * (kernel_size**2))**0.5)
-            self.bias = Parameter(init.rand(out_channels, low=-val, high=val, device=device, dtype=dtype))
+            self.bias = Parameter(init.rand(out_channels, low=-val, high=val, 
+                device=device, dtype=dtype))
 
         ### END YOUR SOLUTION
 

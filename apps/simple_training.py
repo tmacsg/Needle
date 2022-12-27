@@ -191,7 +191,6 @@ def run_fetal_epoch(model, optimizer, train_loader, test_loader, device):
             y.reshape((B*H*W,)))
         loss.backward()
         optimizer.step() 
-        
         train_loss.append(loss.data.numpy()[0])
 
 
@@ -248,5 +247,5 @@ if __name__ == "__main__":
     model = unet(feature_scale=configs['feature_scale'], in_channels=1, n_classes=2, 
                 device=device, dtype="float32", is_batchnorm=configs['is_batchnorm'])
     optimizer = ndl.optim.Adam(model.parameters(), lr=configs['lr'], weight_decay=configs['wt_dec'])
-
+    # optimizer = ndl.optim.SGD(model.parameters())
     train_fetal(model, optimizer, train_loader, test_loader, configs['num_epochs'], device)

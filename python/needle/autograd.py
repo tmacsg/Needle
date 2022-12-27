@@ -99,10 +99,10 @@ class Value:
             return self.cached_data
         # note: data implicitly calls realized cached data
 
-
         self.cached_data = self.op.compute(
             *[x.realize_cached_data() for x in self.inputs]
         ) 
+        self.cached_data
         return self.cached_data
 
     def is_leaf(self):
@@ -241,7 +241,7 @@ class Tensor(Value):
         if not LAZY_MODE:
             if not tensor.requires_grad:
                 return tensor.detach()
-            # tensor.realize_cached_data()
+            tensor.realize_cached_data()
         return tensor
 
     @staticmethod

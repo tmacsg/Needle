@@ -288,7 +288,9 @@ class FetalHeadDataset(Dataset):
 		image = cv2.imread(self.data_path + '/all_images/' + img_name, cv2.IMREAD_GRAYSCALE)
 		image = cv2.resize(image, (572, 572), cv2.INTER_LANCZOS4)
 		image = self.apply_transforms(image)
-		image = image / 255.0 
+		# m, n = np.mean(image), np.std(image)
+		# image = ((image - m) / n).astype(np.float32) 
+		image = (image / 255.0).astype(np.float32)
 		image = np.expand_dims(image, 0)
 
 		mask = cv2.imread(self.data_path + '/all_masks/' + mask_name, cv2.IMREAD_GRAYSCALE)

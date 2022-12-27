@@ -3,6 +3,8 @@ sys.path.append("./python")
 import numpy as np
 import needle as ndl
 import needle.nn as nn
+from needle.autograd import *
+import pytest
 
 sys.path.append("./apps")
 from mlp_resnet import *
@@ -159,8 +161,8 @@ def learn_model_1d(feature_size, nclasses, _model, optimizer, epochs=1, **kwargs
     np.random.seed(42)
     model = _model([])
     
-    X = get_tensor(1024, feature_size).cached_data
-    y = get_int_tensor(1024, low=0, high=nclasses).cached_data.astype(np.uint8)
+    X = get_tensor(1024, feature_size).cached_data.numpy()
+    y = get_int_tensor(1024, low=0, high=nclasses).cached_data.numpy().astype(np.uint8)
     m = X.shape[0]
     batch = 32
 
@@ -175,20 +177,20 @@ def learn_model_1d(feature_size, nclasses, _model, optimizer, epochs=1, **kwargs
             loss = loss_func(out, y0)
             loss.backward()
             # Opt should not change gradients.
-            grad_before = model.parameters()[0].grad.detach().cached_data
+            grad_before = model.parameters()[0].grad.detach().cached_data.numpy()
             opt.step()
-            grad_after = model.parameters()[0].grad.detach().cached_data
+            grad_after = model.parameters()[0].grad.detach().cached_data.numpy()
             np.testing.assert_allclose(grad_before, grad_after, rtol=1e-5, atol=1e-5, \
                                        err_msg="Optim should not modify gradients in place")
 
 
-    return np.array(loss.cached_data)
+    return np.array(loss.cached_data.numpy())
 
 def learn_model_1d_eval(feature_size, nclasses, _model, optimizer, epochs=1, **kwargs):
     np.random.seed(42)
     model = _model([])
-    X = get_tensor(1024, feature_size).cached_data
-    y = get_int_tensor(1024, low=0, high=nclasses).cached_data.astype(np.uint8)
+    X = get_tensor(1024, feature_size).cached_data.numpy()
+    y = get_int_tensor(1024, low=0, high=nclasses).cached_data.numpy().astype(np.uint8)
     m = X.shape[0]
     batch = 32
 
@@ -203,12 +205,12 @@ def learn_model_1d_eval(feature_size, nclasses, _model, optimizer, epochs=1, **k
         loss.backward()
         opt.step()
 
-    X_test = ndl.Tensor(get_tensor(batch, feature_size).cached_data)
-    y_test = ndl.Tensor(get_int_tensor(batch, low=0, high=nclasses).cached_data.astype(np.uint8))
+    X_test = ndl.Tensor(get_tensor(batch, feature_size).cached_data.numpy())
+    y_test = ndl.Tensor(get_int_tensor(batch, low=0, high=nclasses).cached_data.numpy().astype(np.uint8))
 
     model.eval()
 
-    return np.array(loss_func(model(X_test), y_test).cached_data)
+    return np.array(loss_func(model(X_test), y_test).cached_data.numpy())
 
 def init_a_tensor_of_shape(shape, init_fn):
     x = get_tensor(*shape)
@@ -364,7 +366,7 @@ def train_mnist_1(batch_size, epochs, optimizer, lr, weight_decay, hidden_dim):
 
 
 def test_check_prng_contact_us_if_this_fails_1():
-    np.testing.assert_allclose(check_prng(3, 3),
+    np.testing.assert_allclose(check_prng(3, 3).numpy(),
         np.array([[2.1 , 0.95, 3.45],
          [3.1 , 2.45, 2.3 ],
          [3.3 , 0.4 , 1.2 ]], dtype=np.float32), rtol=1e-08, atol=1e-08)
@@ -373,17 +375,17 @@ def test_check_prng_contact_us_if_this_fails_1():
 
 
 def test_op_power_scalar_forward_1():
-    np.testing.assert_allclose(power_scalar_forward((2,2), power=2),
+    np.testing.assert_allclose(power_scalar_forward((2,2), power=2).numpy(),
         np.array([[11.222499, 17.639997],
          [ 0.0625 , 20.25 ]], dtype=np.float32), rtol=1e-5, atol=1e-5)
 
 def test_op_power_scalar_forward_2():
-    np.testing.assert_allclose(power_scalar_forward((2,2), power=-1.5),
+    np.testing.assert_allclose(power_scalar_forward((2,2), power=-1.5).numpy(),
         np.array([[0.16309206, 0.11617859],
          [8. , 0.10475656]], dtype=np.float32), rtol=1e-5, atol=1e-5)
 
 def test_op_power_scalar_backward_1():
-    np.testing.assert_allclose(power_scalar_backward((2,2), power=2),
+    np.testing.assert_allclose(power_scalar_backward((2,2), power=2).numpy(),
         np.array([[6.7, 8.4],
          [0.5, 9. ]], dtype=np.float32), rtol=1e-5, atol=1e-5)
 
@@ -526,7 +528,7 @@ def submit_init():
 
 
 def test_nn_linear_weight_init_1():
-    np.testing.assert_allclose(nn_linear_weight_init(),
+    np.testing.assert_allclose(nn_linear_weight_init().numpy(),
         np.array([[-4.4064468e-01, -6.3199449e-01, -4.1082984e-01, -7.5330488e-02],
                 [-3.3144259e-01,  3.4056887e-02, -4.4079605e-01,  8.8153863e-01],
                 [ 4.3108878e-01, -7.1237373e-01, -2.1057765e-01,  2.3793796e-01],
@@ -537,38 +539,38 @@ def test_nn_linear_weight_init_1():
          dtype=np.float32), rtol=1e-5, atol=1e-5)
 
 def test_nn_linear_bias_init_1():
-    np.testing.assert_allclose(nn_linear_bias_init(),
+    np.testing.assert_allclose(nn_linear_bias_init().numpy(),
         np.array([[ 0.077647,  0.814139, -0.770975,  1.120297]],
          dtype=np.float32), rtol=1e-5, atol=1e-5)
 
 def test_nn_linear_forward_1():
-    np.testing.assert_allclose(linear_forward((10, 5), (1, 10)),
+    np.testing.assert_allclose(linear_forward((10, 5), (1, 10)).numpy(),
         np.array([[3.849948, 9.50499 , 2.38029 , 5.572587, 5.668391]],
          dtype=np.float32), rtol=1e-5, atol=1e-5)
 
 def test_nn_linear_forward_2():
-    np.testing.assert_allclose(linear_forward((10, 5), (3, 10)),
+    np.testing.assert_allclose(linear_forward((10, 5), (3, 10)).numpy(),
         np.array([[ 7.763089, 10.086785,  0.380316,  6.242502,  6.944664],
               [ 2.548275,  7.747925,  5.343155,  2.065694,  9.871243],
               [ 2.871696,  7.466332,  4.236925,  2.461897,  8.209476]],
          dtype=np.float32), rtol=1e-5, atol=1e-5)
 
 def test_nn_linear_forward_3():
-    np.testing.assert_allclose(linear_forward((10, 5), (1, 3, 10)),
+    np.testing.assert_allclose(linear_forward((10, 5), (1, 3, 10)).numpy(),
         np.array([[[ 4.351459,  8.782808,  3.935711,  3.03171 ,  8.014219],
                [ 5.214458,  8.728788,  2.376814,  5.672185,  4.974319],
                [ 1.343204,  8.639378,  2.604359, -0.282955,  9.864498]]],
          dtype=np.float32), rtol=1e-5, atol=1e-5)
 
 def test_nn_linear_backward_1():
-    np.testing.assert_allclose(linear_backward((10, 5), (1, 10)),
+    np.testing.assert_allclose(linear_backward((10, 5), (1, 10)).numpy(),
         np.array([[ 20.61148,   6.920893,  -1.625556, -13.497676,  -6.672813,
                18.762121,   7.286628,   8.18535 ,   2.741301,   5.723689]],
          dtype=np.float32), rtol=1e-5, atol=1e-5)
 
 def test_nn_linear_backward_2():
     print(linear_backward((10, 5), (3, 10)))
-    np.testing.assert_allclose(linear_backward((10, 5), (3, 10)),
+    np.testing.assert_allclose(linear_backward((10, 5), (3, 10)).numpy(),
         np.array([[ 24.548800,    8.775347 ,   4.387898 , -21.248514,   -3.9669373,
         24.256767, 6.3171115,   6.029777 ,   0.8809935,   3.5995162],
         [ 12.233745,   -3.792646 ,  -4.1903896,  -5.106719,  -12.004269 ,  11.967942, 11.939469,
@@ -578,7 +580,7 @@ def test_nn_linear_backward_2():
 
 def test_nn_linear_backward_3():
     print(linear_backward((10, 5), (1, 3, 10)))
-    np.testing.assert_allclose(linear_backward((10, 5), (1, 3, 10)),
+    np.testing.assert_allclose(linear_backward((10, 5), (1, 3, 10)).numpy(),
         np.array([[[ 16.318823,    0.3890714,  -2.3196607, -10.607947 ,  -8.891977,
     16.04581 ,    9.475689 ,  14.571134 ,   6.581477 ,  10.204643 ],
     [ 20.291656,    7.48733  ,   1.2581345, -14.285493 ,  -6.0252004,
@@ -596,12 +598,12 @@ def submit_nn_linear():
 
 
 def test_nn_relu_forward_1():
-    np.testing.assert_allclose(relu_forward(2, 2),
+    np.testing.assert_allclose(relu_forward(2, 2).numpy(),
         np.array([[3.35, 4.2 ],
          [0.25, 4.5 ]], dtype=np.float32), rtol=1e-5, atol=1e-5)
 
 def test_nn_relu_backward_1():
-    np.testing.assert_allclose(relu_backward(3, 2),
+    np.testing.assert_allclose(relu_backward(3, 2).numpy(),
         np.array([[7.5, 2.7],
          [0.6, 0.2],
          [0.3, 6.7]], dtype=np.float32), rtol=1e-5, atol=1e-5)
@@ -613,13 +615,13 @@ def submit_nn_relu():
 
 def test_nn_sequential_forward_1():
     print(sequential_forward(batches=3))
-    np.testing.assert_allclose(sequential_forward(batches=3),
+    np.testing.assert_allclose(sequential_forward(batches=3).numpy(),
         np.array([[ 3.296263,  0.057031,  2.97568 , -4.618432, -0.902491],
               [ 2.465332, -0.228394,  2.069803, -3.772378, -0.238334],
               [ 3.04427 , -0.25623 ,  3.848721, -6.586399, -0.576819]], dtype=np.float32), rtol=1e-5, atol=1e-5)
 
 def test_nn_sequential_backward_1():
-    np.testing.assert_allclose(sequential_backward(batches=3),
+    np.testing.assert_allclose(sequential_backward(batches=3).numpy(),
         np.array([[ 0.802697, -1.0971  ,  0.120842,  0.033051,  0.241105],
               [-0.364489,  0.651385,  0.482428,  0.925252, -1.233545],
               [ 0.802697, -1.0971  ,  0.120842,  0.033051,  0.241105]], dtype=np.float32), rtol=1e-5, atol=1e-5)
@@ -638,7 +640,7 @@ def test_nn_softmax_loss_forward_2():
         np.array(3.3196716, dtype=np.float32), rtol=1e-5, atol=1e-5)
 
 def test_nn_softmax_loss_backward_1():
-    np.testing.assert_allclose(softmax_loss_backward(5, 10),
+    np.testing.assert_allclose(softmax_loss_backward(5, 10).numpy(),
         np.array([[ 0.00068890385, 0.0015331834 , 0.013162163 , -0.16422154 ,
          0.023983022 , 0.0050903494 , 0.00076135644, 0.050772052 ,
          0.0062173656 , 0.062013146 ],
@@ -656,7 +658,7 @@ def test_nn_softmax_loss_backward_1():
          0.0071787895 , -0.19804356 ]], dtype=np.float32), rtol=1e-5, atol=1e-5)
 
 def test_nn_softmax_loss_backward_2():
-    np.testing.assert_allclose(softmax_loss_backward(3, 11),
+    np.testing.assert_allclose(softmax_loss_backward(3, 11).numpy(),
         np.array([[ 0.0027466794, 0.020295369 , 0.012940894 , 0.04748398 ,
          0.052477922 , 0.090957515 , 0.0028875037, 0.012940894 ,
          0.040869843 , 0.04748398 , -0.33108455 ],
@@ -732,7 +734,7 @@ def test_nn_batchnorm_check_model_eval_switches_training_flag_1():
          0, 0, 0, 0, 0]), rtol=1e-5, atol=1e-5)
 
 def test_nn_batchnorm_forward_1():
-    np.testing.assert_allclose(batchnorm_forward(4, 4),
+    np.testing.assert_allclose(batchnorm_forward(4, 4).numpy(),
         np.array([[ 7.8712696e-01, -3.1676728e-01, -6.4885163e-01, 2.0828949e-01],
          [-7.9508079e-03, 1.0092355e+00, 1.6221288e+00, 8.5209310e-01],
          [ 8.5073310e-01, -1.4954363e+00, -9.6686421e-08, -1.6852506e+00],
@@ -742,7 +744,7 @@ def test_nn_batchnorm_forward_1():
 
 
 def test_nn_batchnorm_forward_affine_1():
-    np.testing.assert_allclose(batchnorm_forward(4, 4, affine=True),
+    np.testing.assert_allclose(batchnorm_forward(4, 4, affine=True).numpy(),
         np.array([[ 7.49529 , 0.047213316, 2.690084 , 5.5227957 ],
          [ 4.116209 , 3.8263211 , 7.79979 , 7.293256 ],
          [ 7.765616 , -3.3119934 , 4.15 , 0.31556034 ],
@@ -751,7 +753,7 @@ def test_nn_batchnorm_forward_affine_1():
 
 
 def test_nn_batchnorm_backward_1():
-    np.testing.assert_allclose(batchnorm_backward(5, 4),
+    np.testing.assert_allclose(batchnorm_backward(5, 4).numpy(),
         np.array([[ 2.1338463e-04, 5.2094460e-06, -2.8359889e-05, -4.4368207e-06],
          [-3.8480759e-04, -4.0292739e-06, 1.8370152e-05, -1.1172146e-05],
          [ 2.5629997e-04, -1.1003018e-05, -9.0479853e-06, 5.5171549e-06],
@@ -760,7 +762,7 @@ def test_nn_batchnorm_backward_1():
          dtype=np.float32), rtol=1e-5, atol=1e-5)
 
 def test_nn_batchnorm_backward_affine_1():
-    np.testing.assert_allclose(batchnorm_backward(5, 4, affine=True),
+    np.testing.assert_allclose(batchnorm_backward(5, 4, affine=True).numpy(),
         np.array([[ 3.8604736e-03, 4.2676926e-05, -1.4114380e-04, -3.2424927e-05],
          [-6.9427490e-03, -3.3140182e-05, 9.1552734e-05, -8.5830688e-05],
          [ 4.6386719e-03, -8.9883804e-05, -4.5776367e-05, 4.3869019e-05],
@@ -770,19 +772,19 @@ def test_nn_batchnorm_backward_affine_1():
 
 
 def test_nn_batchnorm_running_mean_1():
-    np.testing.assert_allclose(batchnorm_running_mean(4, 3),
+    np.testing.assert_allclose(batchnorm_running_mean(4, 3).numpy(),
         np.array([2.020656, 1.69489 , 1.498846], dtype=np.float32), rtol=1e-5, atol=1e-5)
 
 
 
 def test_nn_batchnorm_running_var_1():
-    np.testing.assert_allclose(batchnorm_running_var(4, 3),
+    np.testing.assert_allclose(batchnorm_running_var(4, 3).numpy(),
         np.array([1.412775, 1.386191, 1.096604], dtype=np.float32), rtol=1e-5, atol=1e-5)
 
 
 
 def test_nn_batchnorm_running_grad_1():
-    np.testing.assert_allclose(batchnorm_running_grad(4, 3),
+    np.testing.assert_allclose(batchnorm_running_grad(4, 3).numpy(),
         np.array([[ 8.7022781e-06, -4.9751252e-06, 9.5367432e-05],
          [ 6.5565109e-06, -7.2401017e-06, -2.3484230e-05],
          [-3.5762787e-06, -4.5262277e-07, 1.6093254e-05],
@@ -803,12 +805,12 @@ def submit_nn_batchnorm():
 
 
 def test_nn_dropout_forward_1():
-    np.testing.assert_allclose(dropout_forward((2, 3), prob=0.45),
+    np.testing.assert_allclose(dropout_forward((2, 3), prob=0.45).numpy(),
         np.array([[6.818182 , 0. , 0. ],
          [0.18181819, 0. , 6.090909 ]], dtype=np.float32), rtol=1e-5, atol=1e-5)
 
 def test_nn_dropout_backward_1():
-    np.testing.assert_allclose(dropout_backward((2, 3), prob=0.26),
+    np.testing.assert_allclose(dropout_backward((2, 3), prob=0.26).numpy(),
         np.array([[1.3513514, 0. , 0. ],
          [1.3513514, 0. , 1.3513514]], dtype=np.float32), rtol=1e-5, atol=1e-5)
 

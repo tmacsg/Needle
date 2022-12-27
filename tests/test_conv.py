@@ -347,7 +347,7 @@ conv_forward_params = [
 def test_nn_conv_forward(s, cin, cout, k, stride, device):
     np.random.seed(0)
     import torch
-    f = ndl.nn.Conv(cin, cout, k, stride=stride, device=device)
+    f = ndl.nn.Conv(cin, cout, k, stride=stride, device=device, bias=True)
     x = ndl.init.rand(10, cin, s, s, device=device)
     g = torch.nn.Conv2d(cin, cout, k, stride=stride, padding=k//2)
 
@@ -371,7 +371,7 @@ conv_back_params = [
 def test_nn_conv_backward(s, cin, cout, k, stride, device):
     np.random.seed(0)
     import torch
-    f = ndl.nn.Conv(cin, cout, k, stride=stride, device=device)
+    f = ndl.nn.Conv(cin, cout, k, stride=stride, device=device, bias=True)
     x = ndl.init.rand(1, cin, s, s, device=device, requires_grad=True)
 
     g = torch.nn.Conv2d(cin, cout, k, stride=stride, padding=k//2)
