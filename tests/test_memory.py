@@ -7,13 +7,15 @@ import needle as ndl
 from needle.autograd import TENSOR_COUNTER
 from needle.data import *
 from needle import nn
+import torch
 
+TEST_SIZE = 128
 
 class toy_dataset(Dataset):
     def __init__(self):
         super().__init__()
-        self.X = np.random.rand(1024,2,128,128).astype(np.float32)
-        self.y = (np.random.rand(1024,1,128,128) > 0.5).astype(np.int32)
+        self.X = np.random.rand(32,1,TEST_SIZE,TEST_SIZE).astype(np.float32)
+        self.y = (np.random.rand(32,1,TEST_SIZE,TEST_SIZE) > 0.5).astype(np.int32)
 
     def __getitem__(self, index):
         return self.X[index], self.y[index]
@@ -56,6 +58,70 @@ class toy_model_v2(nn.Module):
     def forward(self, x):
         x = self.model(x) #(128,1,4,4)
         return x
+
+def test_nn_modules():
+    data_loader = DataLoader(toy_dataset(), batch_size=16)
+    model = nn.Sequential(
+        nn.Flatten(),
+        nn.Linear(TEST_SIZE*TEST_SIZE, TEST_SIZE*TEST_SIZE, device=ndl.cuda(), bias=False),
+        # nn.Identity(),
+        nn.ReLU(),
+        # nn.Linear(128*128,128*128, device=ndl.cuda())
+    )
+    opt = ndl.optim.SGD(params=model.parameters())
+    model.train()
+    for _ in range(50):
+        cur_loss = 0 
+        for data, label in data_loader:  
+            opt.reset_grad()          
+            X, y = ndl.Tensor(data, device=ndl.cuda()), ndl.Tensor(label, device=ndl.cuda())
+            # y_hat = model(X)       
+            # y_hat = X ** 5 
+            y_hat = X.reshape((1, *X.shape)).broadcast_to((2, *X.shape))
+            y_hat = y_hat.sum(0)
+            y = y.reshape(y_hat.shape)
+            loss = nn.MSELoss()(y_hat, y)  
+            loss.backward()        
+            cur_loss += loss.data.numpy()[0]
+            opt.step()
+            # m = ndl.Tensor(np.random.rand(10000,10000), 
+            #                device=ndl.cuda(),
+            #                requires_grad=False)
+            m = np.random.rand(10000,10000)
+            n = m @ m
+            print(n.shape)
+            
+        print('Loss: ', cur_loss)
+
+def test_nn_modules_torch():
+    data_loader = DataLoader(toy_dataset(), batch_size=32)
+    model = torch.nn.Sequential(
+        torch.nn.Flatten(),
+        torch.nn.Linear(TEST_SIZE*TEST_SIZE, TEST_SIZE*TEST_SIZE, bias=False),
+        torch.nn.ReLU(),
+        # nn.Linear(128*128,128*128, device=ndl.cuda())
+    )
+    
+    model.cuda()
+    opt = torch.optim.SGD(params=model.parameters(), 
+        lr=0.01, weight_decay=0.009)
+    model.train()
+    for _ in range(50):
+        cur_loss = 0 
+        for data, label in data_loader:
+            opt.zero_grad()
+            X, y = torch.Tensor(data).cuda(), \
+                    torch.Tensor(label).cuda()
+            y_hat = model(X)
+        
+            y = y.reshape(y_hat.shape)
+
+            loss = torch.nn.MSELoss()(y_hat, y)  
+            loss.backward()        
+            cur_loss += loss.cpu().item()
+            opt.step()
+        print('Loss: ', cur_loss)
+    
 
 
 def test_toy_dataset():

@@ -217,7 +217,7 @@ def inference(img_name):
     device = ndl.cuda() if configs['device'] == 'cuda' else ndl.cpu()
     model = unet(feature_scale=configs['feature_scale'], in_channels=1, n_classes=2, 
                 device=device, dtype="float32", is_batchnorm=configs['is_batchnorm'])
-    ndl.load(model, configs['model_save_path'] + '/fetal_20.pkl')
+    ndl.load(model, configs['model_save_path'] + '/fetal_5.pkl')
 
     run_fetal_inference(model, device, img_path, img_save_path)
 
@@ -264,8 +264,8 @@ if __name__ == "__main__":
     train_image_count = int(configs['data_split'][0] * len(li))
     # train_list = li[0: train_image_count]
     # test_list = li[train_image_count:]
-    train_list = li[0: 20]
-    test_list = li[20:40]
+    train_list = li[0: 100]
+    test_list = li[100:120]
     train_loader = DataLoader(FetalHeadDataset(configs['data_path'], train_list), 
                               batch_size=configs['batch_size'], shuffle=True)
     test_loader = DataLoader(FetalHeadDataset(configs['data_path'], test_list))

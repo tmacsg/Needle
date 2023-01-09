@@ -16,7 +16,9 @@ from tests.test_nn_and_optim import *
 
 if __name__ == '__main__':
     # test_toy_dataset()
-    inference('007_HC.PNG')
+    # inference('007_HC.PNG')
+    test_nn_modules()
+    # test_nn_modules_torch()
 
 
     

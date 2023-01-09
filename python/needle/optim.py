@@ -24,16 +24,27 @@ class SGD(Optimizer):
 
     def step(self):
         ### BEGIN YOUR SOLUTION
-        self.clip_grad_norm()
+        # self.clip_grad_norm()
         for param in self.params:
             if param.grad is None:
                 continue
             if param not in self.u:
-                self.u[param] = ndl.init.zeros(*param.shape, device=param.device).data                   
+                self.u[param] = 0                  
 
-            d_p = param.grad.data + self.weight_decay * param.data   
-            self.u[param] = self.momentum * self.u[param] + (1 - self.momentum) * d_p          
+            d_p = param.grad.data + self.weight_decay * param.data 
+            self.u[param] = self.momentum * self.u[param] + (1 - self.momentum) * d_p        
             param.data -= self.lr * self.u[param]
+
+        # for i, p in enumerate(self.params):
+        #     if i not in self.u:
+        #         self.u[i] = 0
+        #     if p.grad is None:
+        #         continue
+        #     g = p.grad.data.numpy() + p.data.numpy() * self.weight_decay
+        #     self.u[i] = self.momentum * self.u[i] \
+        #         + (1 - self.momentum) * g
+        #     p.data -= ndl.Tensor(self.lr * self.u[i], device=p.device, requires_grad=False)
+
         ### END YOUR SOLUTION
 
     def clip_grad_norm(self, max_norm=0.25):

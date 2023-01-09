@@ -238,21 +238,18 @@ class BroadcastTo(TensorOp):
         self.shape = shape
 
     def compute(self, a):
-        return a.broadcast_to(self.shape).compact()
+        return a.broadcast_to(self.shape)
 
     def gradient(self, out_grad, node):
         ### BEGIN YOUR SOLUTION
-        input_shape = node.inputs[0].shape
-        # dim_diff = len(self.shape) - len(input_shape)
-        # for i in range(dim_diff):
-        #     out_grad = summation(out_grad, 0)
-        for j in range(len(input_shape)):
-            if input_shape[j] != out_grad.shape[j]:
-                a = out_grad.transpose((0,j))
-                b = summation(a, 0)
-                c = b.reshape((1, *b.shape))
-                d = c.transpose((0,j))
-        return d
+        input_shape = list(node.inputs[0].shape)
+        output_shape = list(out_grad.shape)
+        out_data = out_grad.realize_cached_data()
+
+        for i in range(len(input_shape)):
+            if input_shape[i] != output_shape[i]:
+                out_data = out_data.sum(axis=i, keepdims=True)
+        return Tensor(out_data, device=out_grad.device, requires_grad=False)
 
         ### END YOUR SOLUTION
 
@@ -262,12 +259,13 @@ def broadcast_to(a, shape):
 
 
 class Summation(TensorOp):
-    def __init__(self, axes: Optional[tuple] = None):
+    def __init__(self, axes: Optional[tuple] = None, keepdims: Optional[bool] = False):
         self.axes = axes
+        self.keepdims = keepdims
 
     def compute(self, a):
         ### BEGIN YOUR SOLUTION
-        return a.sum(self.axes)
+        return a.sum(self.axes, keepdims=self.keepdims)
         ### END YOUR SOLUTION
 
     def gradient(self, out_grad, node):        
@@ -315,9 +313,10 @@ class MatMul(TensorOp):
         dim1 = reduce_shape(temp_1.shape) //  reduce_shape(lhs.shape) 
         dim2 = reduce_shape(temp_2.shape) //  reduce_shape(rhs.shape) 
 
-        temp_1 = temp_1.reshape((dim1, *lhs.shape))
-        temp_2 = temp_2.reshape((dim2, *rhs.shape))
-        return summation(temp_1, 0), summation(temp_2,0)
+        temp_1 = temp_1.reshape((dim1, *lhs.shape)).sum(0)
+        temp_2 = temp_2.reshape((dim2, *rhs.shape)).sum(0)
+        return temp_1, temp_2
+
         ### END YOUR SOLUTION
 
 

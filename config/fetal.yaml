@@ -5,7 +5,7 @@ data_path: data/us_dataset
 data_split: [0.8, 0.2] # train/test split
 lr: 0.01 # learning rate for Adam optimizer
 wt_dec: 0.0001 # weight decay rate
-num_epochs: 10 # epochs to train
+num_epochs: 150 # epochs to train
 batch_size: 4 # training batch size
 device: cuda # cuda or cpu
 is_batchnorm: False # whether perform batchnorm after conv layer

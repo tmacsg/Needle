@@ -252,8 +252,9 @@ class NDArray:
         """
 
         ### BEGIN YOUR SOLUTION
-        if not self.is_compact():
-            self = self.compact()
+        # assert self.is_compact() 
+        # if not self.is_compact():
+        #     self = self.compact() 
         return NDArray.make(new_shape, device=self.device, handle=self._handle)
         ### END YOUR SOLUTION
 

@@ -98,7 +98,8 @@ class Linear(Module):
     def forward(self, X: Tensor) -> Tensor:
         ### BEGIN YOUR SOLUTION
         if self.bias:
-            temp = self.bias.reshape((1, self.out_features)).broadcast_to((X.shape[0], self.out_features))
+            temp = self.bias.reshape((1, self.out_features))
+            temp = temp.broadcast_to((X.shape[0], self.out_features))
             return X @ self.weight + temp
         else:
             return X @ self.weight
@@ -170,6 +171,19 @@ class SoftmaxLoss(Module):
         z_y = ops.summation(ops.multiply(logits, y_one_hot), (1,))
         return ops.summation(z_logSumExp - z_y) / logits.shape[0]
         ### END YOUR SOLUTION
+
+class MSELoss(Module):
+    """
+    logits : Tensor of shape (*)
+    y :  Tensor of shape (*)   
+    """
+    def forward(self, logits: Tensor, y: Tensor): 
+        size = 1     
+        for i in logits.shape:
+            size *= i
+        x = logits.reshape((size,))
+        y = y.reshape((size,)) 
+        return ops.summation((x - y)**2) / size
 
 
 class BatchNorm1d(Module):
