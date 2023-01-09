@@ -220,7 +220,7 @@ if __name__ == "__main__":
 
 	optimizer = ndl.optim.Adam(model.parameters(), lr=lr, weight_decay=wt_dec)
 
-	perform_learning(model, optimizer, path, all_names, batch_size,
-					splits, num_epochs, device)
+	# perform_learning(model, optimizer, path, all_names, batch_size,
+	# 				splits, num_epochs, device)
 
-	# qualitative_assessment()
+	qualitative_assessment()

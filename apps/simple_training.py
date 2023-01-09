@@ -211,7 +211,9 @@ def run_fetal_epoch(model, optimizer, train_loader, test_loader, device):
 def inference(img_name):
     configs = {}
     with open('./config/fetal.yaml') as f:
-        configs = configs | yaml.safe_load(f)
+        # configs = configs | yaml.safe_load(f)
+        configs = {**configs, **yaml.safe_load(f)}
+        print(configs)
     img_path = configs['data_path'] + '/all_images/' + img_name
     img_save_path = configs['image_save_path'] + '/' + img_name
     device = ndl.cuda() if configs['device'] == 'cuda' else ndl.cpu()
@@ -258,7 +260,9 @@ if __name__ == "__main__":
 
     configs = {}
     with open('./config/fetal.yaml') as f:
-        configs = configs | yaml.safe_load(f)
+        # configs = configs | yaml.safe_load(f)
+        configs = {**configs, **yaml.safe_load(f)}
+        print(configs)
 
     li = os.listdir(configs['data_path'] + '/all_images/')
     train_image_count = int(configs['data_split'][0] * len(li))
