@@ -59,37 +59,39 @@ class toy_model_v2(nn.Module):
         x = self.model(x) #(128,1,4,4)
         return x
 
+DEVICE = ndl.cuda()
 def test_nn_modules():
     data_loader = DataLoader(toy_dataset(), batch_size=16)
     model = nn.Sequential(
         nn.Flatten(),
-        nn.Linear(TEST_SIZE*TEST_SIZE, TEST_SIZE*TEST_SIZE, device=ndl.cuda(), bias=False),
+        nn.Linear(TEST_SIZE*TEST_SIZE, TEST_SIZE*TEST_SIZE, device=DEVICE, bias=False),
         # nn.Identity(),
         nn.ReLU(),
         # nn.Linear(128*128,128*128, device=ndl.cuda())
     )
     opt = ndl.optim.SGD(params=model.parameters())
     model.train()
-    for _ in range(50):
+
+    # m = ndl.Tensor(np.random.rand(10000,10000), 
+    #                 device=DEVICE)
+    # n = ndl.Tensor(np.random.rand(10000,10000), 
+    #                 device=DEVICE)
+    # test_opt = ndl.optim.SGD(params=[m])  
+
+    for _ in range(10):
         cur_loss = 0 
         for data, label in data_loader:  
             opt.reset_grad()          
-            X, y = ndl.Tensor(data, device=ndl.cuda()), ndl.Tensor(label, device=ndl.cuda())
-            # y_hat = model(X)       
-            # y_hat = X ** 5 
-            y_hat = X.reshape((1, *X.shape)).broadcast_to((2, *X.shape))
-            y_hat = y_hat.sum(0)
+            X, y = ndl.Tensor(data, device=DEVICE), ndl.Tensor(label, device=DEVICE)
+            y_hat = model(X)       
             y = y.reshape(y_hat.shape)
             loss = nn.MSELoss()(y_hat, y)  
             loss.backward()        
             cur_loss += loss.data.numpy()[0]
             opt.step()
-            # m = ndl.Tensor(np.random.rand(10000,10000), 
-            #                device=ndl.cuda(),
-            #                requires_grad=False)
-            m = np.random.rand(10000,10000)
-            n = m @ m
-            print(n.shape)
+            # m = np.random.rand(10000,10000)
+            # n = m @ m
+            # print(n.shape)
             
         print('Loss: ', cur_loss)
 

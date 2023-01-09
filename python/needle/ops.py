@@ -316,6 +316,9 @@ class MatMul(TensorOp):
         temp_1 = temp_1.reshape((dim1, *lhs.shape)).sum(0)
         temp_2 = temp_2.reshape((dim2, *rhs.shape)).sum(0)
         return temp_1, temp_2
+        # lhs, rhs = node.inputs[0].data, node.inputs[1].data
+        # return out_grad @ rhs.transpose(), lhs.transpose() @ out_grad
+
 
         ### END YOUR SOLUTION
 

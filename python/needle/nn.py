@@ -103,6 +103,8 @@ class Linear(Module):
             return X @ self.weight + temp
         else:
             return X @ self.weight
+            # return X ** 100 + X
+            
         ### END YOUR SOLUTION
 
 

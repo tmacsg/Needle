@@ -415,6 +415,7 @@ def compute_gradient_of_variables(output_tensor, out_grad):
                     node_to_output_grads_list[node.inputs[i]] = [gradients[i]]
                 else:
                     node_to_output_grads_list[node.inputs[i]].append(gradients[i])
+            # print(node.op)
     return node_to_output_grads_list
     ### END YOUR SOLUTION
 
