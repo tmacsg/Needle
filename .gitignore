@@ -1,4 +1,4 @@
-/*.ipynb
+hw4.ipynb
 /python/needle/__pycache__
 /python/needle/backend_ndarray/__pycache__
 /python/needle/backend_ndarray/ndarray_backend_cpu.cpython-37m-x86_64-linux-gnu.so
@@ -11,7 +11,3 @@
 /tests/__pycache__
 /build
 /data
-CMakeLists.txt
-Makefile
-/src/ndarray_backend_cpu.cc
-/src/ndarray_backend_cuda.cu
