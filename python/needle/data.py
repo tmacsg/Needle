@@ -262,11 +262,12 @@ class CIFAR10Dataset(Dataset):
 class FetalHeadDataset(Dataset):
 	""" Data loader class """
 	def __init__(
-     self, 
-     data_path: str, 
-     image_name_list: List[str], 
-     transforms: Optional[List] = None,
-     ):
+	 self, 
+	 data_path: str, 
+	 image_name_list: List[str], 
+	 transforms: Optional[List] = None,
+	 p: Optional[float] = 0.5
+	 ):
 		"""
 		Args:
 			path (str): path where images stored
@@ -276,6 +277,7 @@ class FetalHeadDataset(Dataset):
 		self.data_path = data_path
 		self.image_name_list = image_name_list
 		self.transforms = transforms
+		self.p = p
 
 	def __len__(self):
 		return len(self.image_name_list)
